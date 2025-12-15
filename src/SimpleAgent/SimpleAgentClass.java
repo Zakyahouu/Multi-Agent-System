@@ -18,6 +18,11 @@ import jade.util.leap.List;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Random;
+// DF imports for registering/searching services
+import jade.domain.DFService;
+import jade.domain.FIPAAgentManagement.DFAgentDescription;
+import jade.domain.FIPAAgentManagement.ServiceDescription;
+import jade.domain.FIPAException;
 import java.util.Set;
 import java.util.HashSet;
 
@@ -31,6 +36,21 @@ public class SimpleAgentClass extends Agent {
     // Track last opened container view and whether to reopen it after move
     private String lastContainerViewName;
     private boolean reopenContainerAfterMove = false;
+    
+    // Chat DF service toggle:
+    // - When true, the agent registers a DF service (type "chat") so others can discover it
+    // - When false, the agent deregisters from DF and cannot be discovered as a chat provider
+    private boolean chatEnabled = true;
+    private static final String CHAT_SERVICE_TYPE = "chat";
+
+    // ================= MORSE SERVICE FEATURE (teacher demo) =================
+    // A dedicated DF service that converts plain text to Morse code on request.
+    // Toggled independently from chat so it is easy to explain and showcase.
+    private boolean morseServiceEnabled = false;
+    private static final String MORSE_SERVICE_TYPE = "morse-translator";
+    private static final String MORSE_SERVICE_ONTOLOGY = "morse-ontology";
+    private MorseProviderBehaviour morseProviderBehaviour;
+    private static final java.util.Map<Character, String> MORSE_MAP = buildMorseMap();
     
     @Override
     protected void setup() {
@@ -48,6 +68,8 @@ public class SimpleAgentClass extends Agent {
             gui.setAgentColor(agentColor); // Set the color indicator
             restoreLogHistory(); // Restore previous logs
             gui.log("Agent " + getLocalName() + " ready in container: " + here().getName());
+            gui.updateChatToggle(chatEnabled);
+            gui.updateMorseToggle(morseServiceEnabled);
         });
         
         // Add behaviour to listen for commands from GUI
@@ -55,6 +77,13 @@ public class SimpleAgentClass extends Agent {
         
         // Add behaviour to listen for messages from other agents
         addBehaviour(new MessageReceiver());
+
+        // Register any active DF services (chat / morse) so other agents can discover us
+        try {
+            refreshDfRegistration();
+        } catch (FIPAException fe) {
+            System.err.println("DF register failed: " + fe.getMessage());
+        }
     }
     
     @Override
@@ -106,12 +135,17 @@ public class SimpleAgentClass extends Agent {
             gui.setAgentColor(agentColor); // Set the color indicator
             restoreLogHistory(); // Restore logs after move
             gui.log("Agent moved to container: " + here().getName());
+            gui.updateChatToggle(chatEnabled);
+            gui.updateMorseToggle(morseServiceEnabled);
             // Restore last container view if it was open before moving
             if (reopenContainerAfterMove && lastContainerViewName != null && !lastContainerViewName.isEmpty()) {
                 openContainerViewFor(lastContainerViewName);
             }
             reopenContainerAfterMove = false;
         });
+
+        // After moving, refresh DF registration so services remain discoverable
+        try { refreshDfRegistration(); } catch (FIPAException ignored) {}
     }
     
     @Override
@@ -128,13 +162,24 @@ public class SimpleAgentClass extends Agent {
             gui = new SimpleGui.SimpleGuiClass(this);
             gui.setAgentColor(agentColor); // Set the color indicator
             gui.log("Agent cloned as " + getLocalName() + " in container: " + here().getName());
+            gui.updateChatToggle(chatEnabled);
+            gui.updateMorseToggle(morseServiceEnabled);
         });
+
+        // For clones, refresh DF registration so services stay consistent
+        try { refreshDfRegistration(); } catch (FIPAException ignored) {}
     }
     
     @Override
     protected void takeDown() {
         super.takeDown();
         System.out.println("Agent " + getLocalName() + " shutting down");
+        if (morseProviderBehaviour != null) {
+            removeBehaviour(morseProviderBehaviour);
+            morseProviderBehaviour = null;
+        }
+        // Clean all DF entries so the directory doesn't keep stale records
+        try { DFService.deregister(this); } catch (FIPAException ignored) {}
         if (gui != null) {
             gui.dispose();
         }
@@ -207,6 +252,18 @@ public class SimpleAgentClass extends Agent {
             case "9": // Open container view
                 openContainerView();
                 break;
+            
+            case "TOGGLE_CHAT": // Toggle DF chat service registration on/off
+                toggleChatService();
+                break;
+            
+            case "LIST_SERVICES": // List all DF services grouped by type
+                listDfServices();
+                break;
+
+            case "TOGGLE_MORSE": // Toggle Morse translator service
+                toggleMorseService();
+                break;
                 
             default:
                 if (command.startsWith("TRANSFER:")) {
@@ -241,9 +298,97 @@ public class SimpleAgentClass extends Agent {
                     // For now, we'll ask for agent creation details
                     // The container name is stored in the GUI, so we can use it there
                     askCreateAgentInContainer();
+                } else if (command.startsWith("REQUEST_MORSE:")) {
+                    handleMorseRequestCommand(command.substring(14));
                 }
                 break;
         }
+    }
+    //---------------------------------------------------------------------------------------------------------------------------------------------------
+    /**
+     * Handle GUI requests to translate some plain text into Morse.
+     * The request is routed through the DF so we only proceed when a provider is actually registered.
+     * When the selected provider is this agent (service enabled locally) we short-circuit and translate immediately;
+     * otherwise we issue an ACL REQUEST using the dedicated ontology and wait for the INFORM reply.
+     */
+    private void handleMorseRequestCommand(String payload) {
+        final String raw = payload == null ? "" : payload;
+        final String[] split = raw.split("\\|", 2);
+        final String requestedProvider = split.length == 2 ? split[0].trim() : "";
+        final String plainText = (split.length == 2 ? split[1] : split[0]).trim();
+
+        if (plainText.isEmpty()) {
+            logColoredMessage("Morse request ignored: no text provided.", Color.RED);
+            return;
+        }
+
+        addBehaviour(new jade.core.behaviours.OneShotBehaviour(this) {
+            @Override
+            public void action() {
+                try {
+                    AID provider = findMorseProvider(requestedProvider);
+                    if (provider == null) {
+                        if (requestedProvider == null || requestedProvider.isEmpty()) {
+                            logColoredMessage("No Morse translator registered in DF. Ask another agent to enable it first.", Color.RED);
+                        } else {
+                            logColoredMessage("Agent '" + requestedProvider + "' is not advertising the Morse service.", Color.RED);
+                        }
+                        return;
+                    }
+
+                    if (provider.equals(getAID())) {
+                        if (!morseServiceEnabled) {
+                            logColoredMessage("Local Morse service is disabled. Toggle it ON before processing requests.", Color.RED);
+                            return;
+                        }
+                        String morse = translateToMorse(plainText);
+                        logColoredMessage("Local Morse translation: " + morse, agentColor);
+                        if (gui != null) {
+                            gui.log("Morse (self) " + plainText + " => " + morse);
+                        }
+                        return;
+                    }
+
+                    final String convId = "morse-" + System.currentTimeMillis() + "-" + getLocalName();
+                    ACLMessage req = new ACLMessage(ACLMessage.REQUEST);
+                    req.addReceiver(provider);
+                    req.setOntology(MORSE_SERVICE_ONTOLOGY);
+                    req.setConversationId(convId);
+                    req.setReplyWith(convId + "-req");
+                    req.setContent(plainText);
+                    send(req);
+
+                    String providerName = provider.getLocalName();
+                    logColoredMessage("Requested Morse translation from " + providerName + "...", agentColor);
+
+                    MessageTemplate mt = MessageTemplate.and(
+                        MessageTemplate.MatchConversationId(convId),
+                        MessageTemplate.MatchOntology(MORSE_SERVICE_ONTOLOGY)
+                    );
+
+                    ACLMessage resp = blockingReceive(mt, 5000);
+                    if (resp == null) {
+                        logColoredMessage("No Morse reply from " + providerName + " (timeout).", Color.RED);
+                        return;
+                    }
+
+                    if (resp.getPerformative() == ACLMessage.INFORM) {
+                        String morse = resp.getContent();
+                        logColoredMessage("Morse reply from " + providerName + ": " + morse, agentColor);
+                        if (gui != null) {
+                            gui.log("Morse (" + providerName + ") " + plainText + " => " + morse);
+                        }
+                    } else {
+                        logColoredMessage("Morse request failed: " + resp.getContent(), Color.RED);
+                    }
+                } catch (FIPAException fe) {
+                    logColoredMessage("DF lookup for Morse service failed: " + fe.getMessage(), Color.RED);
+                } catch (Exception e) {
+                    logColoredMessage("Unexpected Morse request error: " + e.getMessage(), Color.RED);
+                    e.printStackTrace();
+                }
+            }
+        });
     }
      //-------------------------------------------------------------------------------------------------------------------------------
     // Command 1: Show agent name
@@ -732,6 +877,12 @@ public class SimpleAgentClass extends Agent {
     
     // Send message to specific agent (with validation that the target exists on the platform)
     private void sendMessageToAgent(String targetAgent, String message) {
+        // If this sender disabled chat, block sending to demonstrate the toggle effect clearly
+        if (!chatEnabled) {
+            String err = "Cannot send: chat service is OFF (not registered in DF).";
+            logColoredMessage(err, Color.RED);
+            return;
+        }
         addBehaviour(new jade.core.behaviours.OneShotBehaviour(this) {
             @Override
             public void action() {
@@ -826,6 +977,12 @@ public class SimpleAgentClass extends Agent {
     
     // Broadcast message to all agents across ALL containers
     private void broadcastMessage(String message) {
+        // Block broadcasting when chat is disabled
+        if (!chatEnabled) {
+            String err = "Cannot broadcast: chat service is OFF (not registered in DF).";
+            logColoredMessage(err, Color.RED);
+            return;
+        }
         addBehaviour(new jade.core.behaviours.OneShotBehaviour(this) {
             @Override
             public void action() {
@@ -921,6 +1078,369 @@ public class SimpleAgentClass extends Agent {
                 }
             }
         });
+    }
+
+    // ---------------- DF: Register/deregister chat service and toggle support ----------------
+    /**
+     * Register this agent in the DF as a provider of service type "chat".
+     * This makes the agent discoverable by other agents searching the DF.
+     * Only registers when chatEnabled == true.
+     */
+    private void registerChatServiceIfEnabled() throws FIPAException {
+        // Legacy helper retained for backward compatibility. All DF state is centralized via refreshDfRegistration().
+        refreshDfRegistration();
+    }
+
+    /**
+     * Toggle the chat service availability:
+     * - If currently enabled: deregister from DF and mark OFF
+     * - If currently disabled: register in DF and mark ON
+     */
+    private void toggleChatService() {
+        addBehaviour(new jade.core.behaviours.OneShotBehaviour(this) {
+            @Override
+            public void action() {
+                try {
+                    if (chatEnabled) {
+                        // Turn OFF: remove DF entry so others can't discover this agent by chat service
+                        chatEnabled = false;
+                        try { refreshDfRegistration(); } catch (FIPAException ignored) {}
+                        if (gui != null) gui.updateChatToggle(false);
+                        logColoredMessage("Chat service disabled (DF entry removed).", Color.ORANGE);
+                    } else {
+                        // Turn ON: register DF entry to become discoverable again
+                        chatEnabled = true;
+                        try {
+                            refreshDfRegistration();
+                            if (gui != null) gui.updateChatToggle(true);
+                            logColoredMessage("Chat service enabled (registered in DF).", agentColor);
+                        } catch (FIPAException e) {
+                            chatEnabled = false; // rollback on failure
+                            logColoredMessage("Chat enable failed: " + e.getMessage(), Color.RED);
+                            if (gui != null) gui.updateChatToggle(false);
+                        }
+                    }
+                } catch (Exception ex) {
+                    logColoredMessage("Chat toggle error: " + ex.getMessage(), Color.RED);
+                }
+            }
+        });
+    }
+
+    /**
+     * Toggle the dedicated Morse translator DF service. When enabled we spin up a provider behaviour
+     * (listening for ontology-scoped requests) and register the new capability in the DF.
+     */
+    private void toggleMorseService() {
+        addBehaviour(new jade.core.behaviours.OneShotBehaviour(this) {
+            @Override
+            public void action() {
+                if (morseServiceEnabled) {
+                    morseServiceEnabled = false;
+                    if (morseProviderBehaviour != null) {
+                        removeBehaviour(morseProviderBehaviour);
+                        morseProviderBehaviour = null;
+                    }
+                    try { refreshDfRegistration(); } catch (FIPAException ignored) {}
+                    if (gui != null) gui.updateMorseToggle(false);
+                    logColoredMessage("Morse translator disabled (DF entry removed).", Color.ORANGE);
+                    return;
+                }
+
+                morseServiceEnabled = true;
+                morseProviderBehaviour = new MorseProviderBehaviour();
+                addBehaviour(morseProviderBehaviour);
+                try {
+                    refreshDfRegistration();
+                    if (gui != null) gui.updateMorseToggle(true);
+                    logColoredMessage("Morse translator enabled and registered in DF.", agentColor);
+                } catch (FIPAException fe) {
+                    morseServiceEnabled = false;
+                    if (morseProviderBehaviour != null) {
+                        removeBehaviour(morseProviderBehaviour);
+                        morseProviderBehaviour = null;
+                    }
+                    logColoredMessage("Failed to register Morse service: " + fe.getMessage(), Color.RED);
+                    if (gui != null) gui.updateMorseToggle(false);
+                }
+            }
+        });
+    }
+
+    /**
+     * Centralized DF registration helper: deregisters stale entries then (re)registers every active capability.
+     */
+    private void refreshDfRegistration() throws FIPAException {
+        try { DFService.deregister(this); } catch (FIPAException ignored) {}
+
+        DFAgentDescription dfd = new DFAgentDescription();
+        dfd.setName(getAID());
+        boolean hasServices = false;
+
+        if (chatEnabled) {
+            ServiceDescription chat = new ServiceDescription();
+            chat.setType(CHAT_SERVICE_TYPE);
+            chat.setName(getLocalName());
+            dfd.addServices(chat);
+            hasServices = true;
+        }
+
+        if (morseServiceEnabled) {
+            ServiceDescription morse = new ServiceDescription();
+            morse.setType(MORSE_SERVICE_TYPE);
+            morse.setName(getLocalName() + "-morse");
+            morse.addOntologies(MORSE_SERVICE_ONTOLOGY);
+            morse.addProtocols("REQUEST-REPLY");
+            jade.domain.FIPAAgentManagement.Property flag = new jade.domain.FIPAAgentManagement.Property("demo", "morse-translator");
+            morse.addProperties(flag);
+            dfd.addServices(morse);
+            hasServices = true;
+        }
+
+        if (!hasServices) {
+            return; // With no services enabled we simply leave DF empty.
+        }
+
+        DFService.register(this, dfd);
+    }
+
+    /**
+     * Query DF for all registered services across all agents, group them by service type,
+     * and log a structured summary. This helps visualize which agents provide which capabilities.
+     */
+    private void listDfServices() {
+        addBehaviour(new jade.core.behaviours.OneShotBehaviour(this) {
+            @Override
+            public void action() {
+                try {
+                    // Template with no restrictions returns ALL services (we'll set maxResults = -1)
+                    DFAgentDescription template = new DFAgentDescription();
+                    jade.domain.FIPAAgentManagement.SearchConstraints sc = new jade.domain.FIPAAgentManagement.SearchConstraints();
+                    sc.setMaxResults(-1L); // no limit
+                    DFAgentDescription[] results = DFService.search(myAgent, template, sc);
+
+                    if (results == null || results.length == 0) {
+                        logColoredMessage("DF: No services registered.", Color.GRAY);
+                        return;
+                    }
+
+                    // Group by service type
+                    java.util.Map<String, java.util.List<ServiceDescription>> byType = new java.util.HashMap<>();
+                    java.util.Map<ServiceDescription, AID> serviceOwners = new java.util.HashMap<>();
+
+                    for (DFAgentDescription dfd : results) {
+                        AID owner = dfd.getName();
+                        @SuppressWarnings("unchecked")
+                        java.util.Iterator<ServiceDescription> it = dfd.getAllServices();
+                        while (it != null && it.hasNext()) {
+                            ServiceDescription sd = it.next();
+                            String type = sd.getType();
+                            if (type == null) type = "<no-type>";
+                            byType.computeIfAbsent(type, k -> new java.util.ArrayList<>()).add(sd);
+                            serviceOwners.put(sd, owner);
+                        }
+                    }
+
+                    // Log grouped report
+                    logColoredMessage("=== DF Service Directory ===", new Color(50,50,120));
+                    for (String type : byType.keySet()) {
+                        java.util.List<ServiceDescription> list = byType.get(type);
+                        logColoredMessage("Type: " + type + " (" + list.size() + " service(s))", new Color(80,80,160));
+                        for (ServiceDescription sd : list) {
+                            AID owner = serviceOwners.get(sd);
+                            StringBuilder sb = new StringBuilder();
+                            sb.append("  - Agent: ").append(owner.getLocalName());
+                            sb.append(" | Name: ").append(sd.getName());
+
+                            // List properties if any
+                            @SuppressWarnings("unchecked") java.util.Iterator<jade.domain.FIPAAgentManagement.Property> pit = sd.getAllProperties();
+                            java.util.List<String> props = new java.util.ArrayList<>();
+                            while (pit != null && pit.hasNext()) {
+                                jade.domain.FIPAAgentManagement.Property p = pit.next();
+                                props.add(p.getName() + "=" + String.valueOf(p.getValue()));
+                            }
+                            if (!props.isEmpty()) {
+                                sb.append(" | Properties: ").append(String.join(", ", props));
+                            }
+                            // Protocols / ontologies / languages can also be iterated if used
+                            logColoredMessage(sb.toString(), Color.DARK_GRAY);
+                        }
+                    }
+                } catch (FIPAException fe) {
+                    logColoredMessage("DF list error: " + fe.getMessage(), Color.RED);
+                } catch (Exception e) {
+                    logColoredMessage("DF list unexpected error: " + e.getMessage(), Color.RED);
+                }
+            }
+        });
+    }
+
+    /**
+     * Locate a registered Morse provider via the DF. Prefers remote providers so the teacher can demonstrate inter-agent calls,
+     * but gracefully falls back to this agent when we happen to be the only provider.
+     */
+    private AID findMorseProvider(String preferredLocalName) throws FIPAException {
+
+        DFAgentDescription template = new DFAgentDescription();
+        ServiceDescription sd = new ServiceDescription();
+        sd.setType(MORSE_SERVICE_TYPE);
+        template.addServices(sd);
+
+        jade.domain.FIPAAgentManagement.SearchConstraints sc = new jade.domain.FIPAAgentManagement.SearchConstraints();
+        sc.setMaxResults(10L);//constrained about max results to avoid error idk why
+        DFAgentDescription[] results = DFService.search(this, template, sc);
+        if (results == null || results.length == 0) {
+            return null;
+        }
+        //Fall backs in case of errors just in case, sometimes its agent itself sometimes other agents
+        AID fallbackRemote = null;
+        AID fallbackSelf = null;
+        String preferred = preferredLocalName == null ? "" : preferredLocalName.trim();
+
+        for (DFAgentDescription dfd : results) {
+            AID candidate = dfd.getName();
+            if (!preferred.isEmpty()) {
+                if (candidate.getLocalName().equalsIgnoreCase(preferred)) {
+                    return candidate;
+                }
+                continue;
+            }
+            if (!candidate.equals(getAID()) && fallbackRemote == null) {
+                fallbackRemote = candidate;
+            } else if (candidate.equals(getAID())) {
+                fallbackSelf = candidate;
+            }
+        }
+
+        if (!preferred.isEmpty()) {
+            // Preferred agent not advertising the service
+            return null;
+        }
+
+        return fallbackRemote != null ? fallbackRemote : fallbackSelf;
+    }
+
+    /**
+     * Convert readable text to Morse code
+     * Unsupported characters are replaced with "?" psq hkda why not
+     */
+    private String translateToMorse(String text) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        boolean justAddedGap = false;
+        for (char raw : text.toCharArray()) {
+            char ch = Character.toUpperCase(raw);
+            if (Character.isWhitespace(ch)) {
+                if (!justAddedGap && sb.length() > 0) {
+                    sb.append(" / ");
+                    justAddedGap = true;
+                }
+                continue;
+            }
+            String morse = MORSE_MAP.get(ch);
+            if (morse == null) {
+                morse = "?";
+            }
+            if (sb.length() > 0 && !justAddedGap) {
+                sb.append(' ');
+            }
+            sb.append(morse);
+            justAddedGap = false;
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Cyclic behaviour that answers incoming Morse translation requests
+     * ;UST BE TOGGLE ON
+     */
+    private class MorseProviderBehaviour extends CyclicBehaviour {
+        private final MessageTemplate template = MessageTemplate.and(
+            MessageTemplate.MatchPerformative(ACLMessage.REQUEST),
+            MessageTemplate.MatchOntology(MORSE_SERVICE_ONTOLOGY)
+        );
+
+        @Override
+        public void action() {
+            ACLMessage msg = myAgent.receive(template);//???
+            if (msg == null) {
+                block();
+                return;
+            }
+
+            ACLMessage reply = msg.createReply();
+            reply.setOntology(MORSE_SERVICE_ONTOLOGY);
+            String content = msg.getContent();
+            if (content == null || content.trim().isEmpty()) {
+                reply.setPerformative(ACLMessage.FAILURE);
+                reply.setContent("No text supplied for Morse translation.");
+                send(reply);
+                return;
+            }
+
+            String morse = translateToMorse(content);
+            reply.setPerformative(ACLMessage.INFORM);
+            reply.setContent(morse);
+            send(reply);
+
+            logColoredMessage(
+                "Provided Morse translation to " + msg.getSender().getLocalName() + ": " + morse,
+                new Color(30, 144, 255)
+            );
+        }
+    }
+
+    private static java.util.Map<Character, String> buildMorseMap() {
+        java.util.Map<Character, String> map = new java.util.LinkedHashMap<>();
+        map.put('A', ".-");
+        map.put('B', "-...");
+        map.put('C', "-.-.");
+        map.put('D', "-..");
+        map.put('E', ".");
+        map.put('F', "..-.");
+        map.put('G', "--.");
+        map.put('H', "....");
+        map.put('I', "..");
+        map.put('J', ".---");
+        map.put('K', "-.-");
+        map.put('L', ".-..");
+        map.put('M', "--");
+        map.put('N', "-.");
+        map.put('O', "---");
+        map.put('P', ".--.");
+        map.put('Q', "--.-");
+        map.put('R', ".-.");
+        map.put('S', "...");
+        map.put('T', "-");
+        map.put('U', "..-");
+        map.put('V', "...-");
+        map.put('W', ".--");
+        map.put('X', "-..-");
+        map.put('Y', "-.--");
+        map.put('Z', "--..");
+        map.put('0', "-----");
+        map.put('1', ".----");
+        map.put('2', "..---");
+        map.put('3', "...--");
+        map.put('4', "....-");
+        map.put('5', ".....");
+        map.put('6', "-....");
+        map.put('7', "--...");
+        map.put('8', "---..");
+        map.put('9', "----.");
+        map.put('.', ".-.-.-");
+        map.put(',', "--..--");
+        map.put('?', "..--..");
+        map.put('!', "-.-.--");
+        map.put('-', "-....-");
+        map.put('/', "-..-.");
+        map.put('@', ".--.-.");
+        map.put('(', "-.--.");
+        map.put(')', "-.--.-");
+        map.put('&', ".-...");
+        return java.util.Collections.unmodifiableMap(map);
     }
     
     // Generate unique, well-separated color for agent

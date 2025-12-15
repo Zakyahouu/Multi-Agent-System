@@ -10,12 +10,17 @@ public class SimpleGuiClass extends JFrame {
     private JTextPane logPane; // Changed from JTextArea to JTextPane for colored text
     private StyledDocument logDoc;
     private CirclePanel colorIndicator; // Panel to show agent's unique color as a circle
+    // Toggle button to enable/disable the agent's DF chat service
+    private JButton btnToggleChat;
+    private JButton btnToggleMorse;
+    private JTextField txtMorsePlain;
+    private JTextField txtMorseAgent;
     
     public SimpleGuiClass(SimpleAgent.SimpleAgentClass agent) {
         this.agent = agent;
         
         setTitle("Agent Control Panel - " + agent.getLocalName());
-        setSize(900, 650);
+        setSize(700, 550);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout(10, 10));
         
@@ -68,7 +73,7 @@ public class SimpleGuiClass extends JFrame {
         leftPanel.setPreferredSize(new Dimension(220, 0));
         leftPanel.setBackground(bgColor);
         
-        // Create styled buttons
+    // Create styled buttons
         JButton btnAgentName = createStyledButton("Agent Info", new Color(70, 130, 180));
         JButton btnContainer = createStyledButton("Show Containers", new Color(100, 149, 237));
         JButton btnCreateContainer = createStyledButton("Create Container", new Color(60, 179, 113));
@@ -76,6 +81,14 @@ public class SimpleGuiClass extends JFrame {
         JButton btnTransfer = createStyledButton("Transfer Agent", new Color(255, 165, 0));
         JButton btnClone = createStyledButton("Clone Agent", new Color(147, 112, 219));
         JButton btnKill = createStyledButton("Kill Agent", new Color(220, 20, 60));
+    // Chat DF service toggle (starts as ON; agent will confirm via updateChatToggle)
+    btnToggleChat = createStyledButton("Chat: ON", new Color(40, 170, 40));
+    btnToggleChat.setToolTipText("Enable/Disable DF chat service");
+    // Morse translator DF service toggle (starts as OFF until agent confirms)
+    btnToggleMorse = createStyledButton("Morse: OFF", new Color(72, 61, 139));
+    btnToggleMorse.setToolTipText("Enable/Disable dedicated Morse translator service");
+    // List DF services grouped by type
+    JButton btnListServices = createStyledButton("List Services (DF)", new Color(72, 61, 139));
         
         // Add action listeners - just send command numbers
         btnAgentName.addActionListener(e -> agent.sendCommand("1"));
@@ -84,7 +97,13 @@ public class SimpleGuiClass extends JFrame {
         btnContainerView.addActionListener(e -> agent.sendCommand("9")); // New command for container view
         btnTransfer.addActionListener(e -> agent.sendCommand("4"));
         btnClone.addActionListener(e -> agent.sendCommand("5"));
-        btnKill.addActionListener(e -> agent.sendCommand("6"));
+    btnKill.addActionListener(e -> agent.sendCommand("6"));
+    // Toggle chat service registration in DF
+    btnToggleChat.addActionListener(e -> agent.sendCommand("TOGGLE_CHAT"));
+    // Toggle Morse translator DF registration
+    btnToggleMorse.addActionListener(e -> agent.sendCommand("TOGGLE_MORSE"));
+    // Ask agent to list DF services grouped by category/type
+    btnListServices.addActionListener(e -> agent.sendCommand("LIST_SERVICES"));
         
         // Add buttons with spacing
         leftPanel.add(Box.createVerticalStrut(10));
@@ -101,6 +120,12 @@ public class SimpleGuiClass extends JFrame {
         leftPanel.add(btnClone);
         leftPanel.add(Box.createVerticalStrut(8));
         leftPanel.add(btnKill);
+    leftPanel.add(Box.createVerticalStrut(8));
+    leftPanel.add(btnToggleChat);
+    leftPanel.add(Box.createVerticalStrut(8));
+    leftPanel.add(btnToggleMorse);
+    leftPanel.add(Box.createVerticalStrut(8));
+    leftPanel.add(btnListServices);
         leftPanel.add(Box.createVerticalGlue());
         
         add(leftPanel, BorderLayout.WEST);
@@ -231,12 +256,83 @@ public class SimpleGuiClass extends JFrame {
         gbc.gridwidth = 2;
         gbc.weightx = 1.0;
         messagingPanel.add(btnPanel, gbc);
-        
+//---------------------------------------------------------------------------------------
+        // Morse translator panel - highlights ontology-backed service demo
+        JPanel morsePanel = new JPanel(new GridBagLayout());
+        morsePanel.setBackground(bgColor);
+        morsePanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createEmptyBorder(10, 0, 0, 0),
+            BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(new Color(100, 100, 150), 2),
+                "Morse Translator",
+                TitledBorder.LEFT,
+                TitledBorder.TOP,
+                new Font("Segoe UI", Font.BOLD, 13),
+                new Color(50, 50, 100)
+            )
+        ));
+
+        GridBagConstraints mg = new GridBagConstraints();
+        mg.insets = new Insets(5, 5, 5, 5);
+        mg.fill = GridBagConstraints.HORIZONTAL;
+
+        JLabel lblProvider = new JLabel("Target agent (optional):");
+        lblProvider.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        mg.gridx = 0;
+        mg.gridy = 0;
+        mg.weightx = 0;
+        morsePanel.add(lblProvider, mg);
+
+        txtMorseAgent = new JTextField();
+        txtMorseAgent.setToolTipText("Leave blank to auto-select a provider via DF");
+        txtMorseAgent.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        mg.gridx = 1;
+        mg.gridy = 0;
+        mg.weightx = 1.0;
+        morsePanel.add(txtMorseAgent, mg);
+
+        JLabel lblMorse = new JLabel("Plain text:");
+        lblMorse.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        mg.gridx = 0;
+        mg.gridy = 1;
+        mg.weightx = 0;
+        morsePanel.add(lblMorse, mg);
+
+        txtMorsePlain = new JTextField();
+        txtMorsePlain.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        txtMorsePlain.setToolTipText("Message that will be translated to Morse code");
+        mg.gridx = 1;
+        mg.gridy = 1;
+        mg.weightx = 1.0;
+        morsePanel.add(txtMorsePlain, mg);
+
+        JButton btnTranslateMorse = createStyledButton("Request Morse", new Color(123, 104, 238));
+        btnTranslateMorse.setPreferredSize(new Dimension(0, 35));
+        btnTranslateMorse.addActionListener(e -> {
+            String text = txtMorsePlain.getText().trim();
+            if (text.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Enter text to translate.", "Morse Translator", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            String provider = txtMorseAgent.getText().trim();
+            if (provider.contains("|")) {
+                provider = provider.replace("|", "/");
+            }
+            String safeText = text.replace("|", "/");
+            agent.sendCommand("REQUEST_MORSE:" + provider + "|" + safeText);
+        });
+        mg.gridx = 0;
+        mg.gridy = 2;
+        mg.gridwidth = 2;
+        mg.weightx = 1.0;
+        morsePanel.add(btnTranslateMorse, mg);
+        //----------------------------------------------------------------------------------------------
         // Add components to right panel
         JPanel bottomPanel = new JPanel(new BorderLayout(5, 5));
         bottomPanel.setBackground(bgColor);
         bottomPanel.add(btnClear, BorderLayout.NORTH);
         bottomPanel.add(messagingPanel, BorderLayout.CENTER);
+        bottomPanel.add(morsePanel, BorderLayout.SOUTH);
         
         rightPanel.add(logTitle, BorderLayout.NORTH);
         rightPanel.add(scrollPane, BorderLayout.CENTER);
@@ -348,7 +444,37 @@ public class SimpleGuiClass extends JFrame {
             }
         });
     }
-    
+//-----------------------------------------------------------------------------------------
+    // Update the Chat toggle button visuals from the Agent side
+    // - When enabled: show "Chat: ON" with green background
+    // - When disabled: show "Chat: OFF" with red background
+    public void updateChatToggle(boolean enabled) {
+        SwingUtilities.invokeLater(() -> {
+            if (btnToggleChat == null) return;
+            if (enabled) {
+                btnToggleChat.setText("Chat: ON");
+                btnToggleChat.setBackground(new Color(40, 170, 40));
+            } else {
+                btnToggleChat.setText("Chat: OFF");
+                btnToggleChat.setBackground(new Color(180, 50, 50));
+            }
+        });
+    }
+
+    // Update Morse toggle visuals so the GUI stays in sync with DF registration
+    public void updateMorseToggle(boolean enabled) {
+        SwingUtilities.invokeLater(() -> {
+            if (btnToggleMorse == null) return;
+            if (enabled) {
+                btnToggleMorse.setText("Morse: ON");
+                btnToggleMorse.setBackground(new Color(65, 105, 225));
+            } else {
+                btnToggleMorse.setText("Morse: OFF");
+                btnToggleMorse.setBackground(new Color(120, 60, 120));
+            }
+        });
+    }
+    //-----------------------------------------------------------------------------------------------
     // Inner class for circular color indicator
     private class CirclePanel extends JPanel {
         public CirclePanel() {
