@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Farm V2 - Multi-Agent Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <h1>🌾 Smart Farm V2</h1>
+            <span class="subtitle">Multi-Agent System Dashboard</span>
+        </div>
+        <div class="header-center">
+            <div class="connection-status" id="connectionStatus">
+                <span class="status-dot"></span>
+                <span class="status-text">Connecting...</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="metric">
+                <span class="metric-label">Income</span>
+                <span class="metric-value" id="totalIncome">$0.00</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Expenses</span>
+                <span class="metric-value" id="totalExpenses">$0.00</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Left Panel: Fields -->
+        <section class="panel fields-panel">
+            <h2 class="panel-title">🌱 Fields</h2>
+            <div class="fields-grid" id="fieldsContainer">
+                <!-- Fields will be populated by backend -->
+                <div class="field-placeholder">
+                    <span>Waiting for field data from agents...</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Center Panel: Agents -->
+        <section class="panel agents-panel">
+            <h2 class="panel-title">🤖 Active Agents</h2>
+
+            <!-- Drones Section -->
+            <div class="agent-section">
+                <h3>📡 Drones</h3>
+                <div class="agents-list" id="dronesContainer">
+                    <div class="agent-placeholder">Waiting for drone agents...</div>
+                </div>
+            </div>
+
+            <!-- Harvesters Section -->
+            <div class="agent-section">
+                <h3>🚜 Harvesters</h3>
+                <div class="agents-list" id="harvestersContainer">
+                    <div class="agent-placeholder">Waiting for harvester agents...</div>
+                </div>
+            </div>
+
+            <!-- Suppliers Section -->
+            <div class="agent-section">
+                <h3>💰 Suppliers</h3>
+                <div class="agents-list" id="suppliersContainer">
+                    <div class="agent-placeholder">Waiting for supplier agents...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Panel: BDI & Logs -->
+        <section class="panel bdi-panel">
+            <h2 class="panel-title">🧠 BDI Mind Viewer</h2>
+            <div class="bdi-viewer" id="bdiViewer">
+                <div class="bdi-section beliefs">
+                    <h3>Beliefs</h3>
+                    <ul id="beliefsList">
+                        <li>Waiting for BDI data...</li>
+                    </ul>
+                </div>
+                <div class="bdi-section desires">
+                    <h3>Desires</h3>
+                    <ul id="desiresList">
+                        <li>Waiting for BDI data...</li>
+                    </ul>
+                </div>
+                <div class="bdi-section intentions">
+                    <h3>Intentions</h3>
+                    <ul id="intentionsList">
+                        <li>Waiting for BDI data...</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Bottom Panel: Activity Logs -->
+    <section class="logs-panel">
+        <h2 class="panel-title">📋 Agent Activity Logs</h2>
+        <div class="logs-container">
+            <div class="log-column">
+                <h3>🛸 Drone Actions</h3>
+                <div class="log-entries" id="droneLog"></div>
+            </div>
+            <div class="log-column">
+                <h3>🚜 Harvester Actions</h3>
+                <div class="log-entries" id="harvesterLog"></div>
+            </div>
+            <div class="log-column">
+                <h3>💹 Market & BDI</h3>
+                <div class="log-entries" id="marketLog"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- AI Prediction Panel -->
+    <section class="prediction-panel" id="predictionPanel">
+        <h2 class="panel-title">🤖 AI Predictions</h2>
+        <div class="prediction-content">
+            <div class="prediction-value">
+                <span class="pred-label">Water Needed</span>
+                <span class="pred-value" id="predictionValue">--</span>
+                <span class="pred-unit">liters</span>
+            </div>
+            <div class="prediction-meta">
+                <span>Confidence: <strong id="predictionConfidence">--%</strong></span>
+                <span>Samples: <strong id="predictionSamples">--</strong></span>
+            </div>
+        </div>
+    </section>
+
+    <script src="js/app.js"></script>
+</body>
+
+</html>

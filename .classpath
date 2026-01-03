@@ -5,7 +5,8 @@
 			<attribute name="module" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="src" path="src"/>
+	<classpathentry excluding="SmartFarm/" kind="src" path="src"/>
+	<classpathentry kind="src" path="src/SmartFarm"/>
 	<classpathentry kind="lib" path="C:/Users/ZAKAR/Bureau/Univ/IA Master/S3/iadsma (mas)/Tp/jade/lib/jade.jar"/>
 	<classpathentry kind="lib" path="C:/Users/ZAKAR/Bureau/Univ/IA Master/S3/iadsma (mas)/Tp/JavaFX/javafx-sdk-21.0.8/lib/javafx.base.jar">
 		<attributes>
@@ -47,5 +48,22 @@
 			<attribute name="module" value="true"/>
 		</attributes>
 	</classpathentry>
+	<!-- Javalin and dependencies -->
+	<classpathentry kind="lib" path="lib/javalin/javalin-5.6.3.jar"/>
+	<classpathentry kind="lib" path="lib/javalin/slf4j-api-2.0.9.jar"/>
+	<classpathentry kind="lib" path="lib/javalin/slf4j-simple-2.0.9.jar"/>
+	<classpathentry kind="lib" path="lib/javalin/jetty-server-11.0.18.jar"/>
+	<classpathentry kind="lib" path="lib/javalin/jetty-servlet-11.0.18.jar"/>
+	<classpathentry kind="lib" path="lib/javalin/jetty-http-11.0.18.jar"/>
+	<classpathentry kind="lib" path="lib/javalin/jetty-io-11.0.18.jar"/>
+	<classpathentry kind="lib" path="lib/javalin/jetty-util-11.0.18.jar"/>
+	<classpathentry kind="lib" path="lib/javalin/jetty-security-11.0.18.jar"/>
+	<classpathentry kind="lib" path="lib/javalin/websocket-jetty-server-11.0.18.jar"/>
+	<classpathentry kind="lib" path="lib/javalin/websocket-jetty-api-11.0.18.jar"/>
+	<classpathentry kind="lib" path="lib/javalin/websocket-core-server-11.0.18.jar"/>
+	<classpathentry kind="lib" path="lib/javalin/websocket-core-common-11.0.18.jar"/>
+	<classpathentry kind="lib" path="lib/javalin/websocket-servlet-11.0.18.jar"/>
+	<classpathentry kind="lib" path="lib/javalin/kotlin-stdlib-1.9.20.jar"/>
+	<classpathentry kind="lib" path="lib/javalin/jakarta.servlet-api-5.0.0.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

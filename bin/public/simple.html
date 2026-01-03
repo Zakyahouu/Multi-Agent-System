@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JADE Smart Farm V5 - Complete Dashboard</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #0f0f1a;
+            --bg-card: rgba(255, 255, 255, 0.03);
+            --accent: #00d4ff;
+            --accent2: #7c3aed;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text: #e2e8f0;
+            --text-dim: #64748b;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(0, 212, 255, 0.1));
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4em;
+            color: var(--accent);
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 30px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 0.75em;
+            color: var(--text-dim);
+            text-transform: uppercase;
+        }
+
+        .connection {
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.85em;
+        }
+
+        .connection.connected {
+            background: var(--success);
+            color: #000;
+        }
+
+        .connection.disconnected {
+            background: var(--danger);
+        }
+
+        .connection.connecting {
+            background: var(--warning);
+            color: #000;
+        }
+
+        /* Main Layout */
+        main {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        /* Panels */
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .panel h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9em;
+            color: var(--accent);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel.wide {
+            grid-column: span 2;
+        }
+
+        .panel.full {
+            grid-column: span 3;
+        }
+
+        /* Field Cards */
+        .field-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .field-card {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(0, 0, 0, 0.2));
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .field-card.danger {
+            border-color: var(--danger);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(0, 0, 0, 0.2));
+        }
+
+        .field-card.ready {
+            border-color: var(--warning);
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(0, 0, 0, 0.2));
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        .field-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .field-name {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .field-stage {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            color: var(--text-dim);
+        }
+
+        .field-crop {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .crop-icon {
+            font-size: 1.5em;
+        }
+
+        .crop-name {
+            color: var(--text-dim);
+            font-size: 0.9em;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 0.9em;
+        }
+
+        .stat-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+
+        .stat-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        .stat-fill.moisture {
+            background: linear-gradient(90deg, #ef4444, #3b82f6, #10b981);
+        }
+
+        .stat-fill.growth {
+            background: linear-gradient(90deg, #f59e0b, #10b981);
+        }
+
+        .stat-fill.health {
+            background: linear-gradient(90deg, #ef4444, #10b981);
+        }
+
+        /* Weather */
+        .weather-card {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(0, 0, 0, 0.2));
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+
+        .weather-emoji {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .weather-name {
+            font-size: 1.2em;
+            color: var(--accent);
+        }
+
+        .weather-details {
+            color: var(--text-dim);
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+
+        /* BDI Display */
+        .bdi-section {
+            margin-bottom: 15px;
+        }
+
+        .bdi-title {
+            font-size: 0.8em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .bdi-title.beliefs {
+            color: #3b82f6;
+        }
+
+        .bdi-title.desires {
+            color: #ec4899;
+        }
+
+        .bdi-title.intentions {
+            color: #f59e0b;
+        }
+
+        .bdi-items {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            max-height: 120px;
+            overflow-y: auto;
+            font-size: 0.85em;
+        }
+
+        .bdi-item {
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .bdi-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Agent List */
+        .agent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+        }
+
+        .agent-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-left: 3px solid var(--accent);
+        }
+
+        .agent-card.bdi {
+            border-left-color: #8b5cf6;
+        }
+
+        .agent-card.reactive {
+            border-left-color: #10b981;
+        }
+
+        .agent-card.mobile {
+            border-left-color: #f59e0b;
+        }
+
+        .agent-card.hybrid {
+            border-left-color: #3b82f6;
+        }
+
+        .agent-icon {
+            font-size: 1.3em;
+        }
+
+        .agent-info {
+            flex: 1;
+        }
+
+        .agent-name {
+            font-weight: 500;
+            font-size: 0.9em;
+        }
+
+        .agent-type {
+            font-size: 0.7em;
+            color: var(--text-dim);
+            text-transform: uppercase;
+        }
+
+        .agent-state {
+            font-size: 0.75em;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        /* Console */
+        .console {
+            background: #0a0a0f;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.8em;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .log-line {
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            display: flex;
+            gap: 10px;
+        }
+
+        .log-time {
+            color: #4b5563;
+            min-width: 70px;
+        }
+
+        .log-type {
+            font-weight: bold;
+            min-width: 120px;
+        }
+
+        .log-type.FIELD_UPDATE {
+            color: #10b981;
+        }
+
+        .log-type.WEATHER_UPDATE {
+            color: #3b82f6;
+        }
+
+        .log-type.MOISTURE_READING {
+            color: #8b5cf6;
+        }
+
+        .log-type.AGENT_INTERACTION {
+            color: #f59e0b;
+        }
+
+        .log-type.BDI_UPDATE {
+            color: #ec4899;
+        }
+
+        .log-type.CONNECTION {
+            color: #00d4ff;
+        }
+
+        .log-msg {
+            color: #9ca3af;
+            flex: 1;
+        }
+
+        /* Water Tank */
+        .water-section {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .tank {
+            width: 80px;
+            height: 120px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(59, 130, 246, 0.5);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tank-fill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(180deg, #3b82f6, #1d4ed8);
+            transition: height 0.5s ease;
+        }
+
+        .tank-pct {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+            font-size: 1.2em;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+        }
+
+        .water-info {
+            flex: 1;
+        }
+
+        .water-stat {
+            margin: 8px 0;
+            font-size: 0.9em;
+        }
+
+        .water-stat .label {
+            color: var(--text-dim);
+        }
+
+        /* Supplier */
+        .supplier-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .supplier-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .supplier-name {
+            font-weight: 500;
+        }
+
+        .supplier-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85em;
+            color: var(--text-dim);
+        }
+
+        .supplier-price {
+            color: var(--success);
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="logo">🌾 JADE SMART FARM V5</div>
+        <div class="header-stats">
+            <div class="stat">
+                <div class="stat-value" id="msgCount">0</div>
+                <div class="stat-label">Messages</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="agentCount">0</div>
+                <div class="stat-label">Agents</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="simTime">00:00</div>
+                <div class="stat-label">Sim Time</div>
+            </div>
+        </div>
+        <div class="connection disconnected" id="connectionStatus">Disconnected</div>
+    </header>
+
+    <main>
+        <!-- Field Status -->
+        <div class="panel wide">
+            <h2>🌾 Field Status</h2>
+            <div class="field-grid" id="fieldGrid"></div>
+        </div>
+
+        <!-- Weather & Water -->
+        <div class="panel">
+            <h2>🌤️ Weather</h2>
+            <div class="weather-card">
+                <div class="weather-emoji" id="weatherEmoji">☀️</div>
+                <div class="weather-name" id="weatherName">Clear</div>
+                <div class="weather-details">Rain Chance: <span id="rainChance">10</span>%</div>
+            </div>
+            <h2>💧 Water Supply</h2>
+            <div class="water-section">
+                <div class="tank">
+                    <div class="tank-fill" id="tankFill" style="height: 75%"></div>
+                    <div class="tank-pct" id="tankPct">75%</div>
+                </div>
+                <div class="water-info">
+                    <div class="water-stat"><span class="label">Capacity:</span> 1000L</div>
+                    <div class="water-stat"><span class="label">Current:</span> <span id="waterCurrent">750</span>L
+                    </div>
+                    <div class="water-stat"><span class="label">Usage:</span> <span id="waterUsage">0</span>L/min</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BDI Agent Mind -->
+        <div class="panel">
+            <h2>🧠 FarmerBDI Agent Mind</h2>
+            <div class="bdi-section">
+                <div class="bdi-title beliefs">👁️ Beliefs</div>
+                <div class="bdi-items" id="beliefs">Waiting for data...</div>
+            </div>
+            <div class="bdi-section">
+                <div class="bdi-title desires">💖 Desires</div>
+                <div class="bdi-items" id="desires">Waiting for data...</div>
+            </div>
+            <div class="bdi-section">
+                <div class="bdi-title intentions">⚡ Intentions</div>
+                <div class="bdi-items" id="intentions">Waiting for data...</div>
+            </div>
+        </div>
+
+        <!-- Active Agents -->
+        <div class="panel wide">
+            <h2>🤖 Active Agents</h2>
+            <div class="agent-grid" id="agentGrid"></div>
+        </div>
+
+        <!-- Live Console -->
+        <div class="panel full">
+            <h2>📡 Live Message Stream</h2>
+            <div class="console" id="console"></div>
+        </div>
+    </main>
+
+    <script>
+        // ==========================================
+        // JADE Smart Farm V5 - WebSocket Dashboard
+        // ==========================================
+
+        const state = {
+            fields: {},
+            agents: {},
+            weather: { name: 'Clear', emoji: '☀️', rainChance: 10 },
+            waterTank: { current: 750, max: 1000 },
+            bdi: { beliefs: [], desires: [], intentions: [] },
+            messageCount: 0,
+            startTime: Date.now()
+        };
+
+        let ws = null;
+
+        // Update sim time
+        setInterval(() => {
+            const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+            const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const secs = (elapsed % 60).toString().padStart(2, '0');
+            document.getElementById('simTime').textContent = `${mins}:${secs}`;
+        }, 1000);
+
+        // Connect to backend
+        function connect() {
+            updateConnection('connecting');
+            ws = new WebSocket('ws://localhost:8080/stream');
+
+            ws.onopen = () => {
+                updateConnection('connected');
+                log('CONNECTION', 'Connected to JADE Multi-Agent System');
+            };
+
+            ws.onclose = () => {
+                updateConnection('disconnected');
+                log('CONNECTION', 'Disconnected - reconnecting...');
+                setTimeout(connect, 3000);
+            };
+
+            ws.onerror = () => updateConnection('disconnected');
+
+            ws.onmessage = (e) => {
+                try {
+                    const msg = JSON.parse(e.data);
+                    handleMessage(msg);
+                } catch (err) {
+                    console.error('Parse error:', err);
+                }
+            };
+        }
+
+        // Handle messages
+        function handleMessage(msg) {
+            state.messageCount++;
+            document.getElementById('msgCount').textContent = state.messageCount;
+
+            const { type, data } = msg;
+
+            switch (type) {
+                case 'FIELD_UPDATE':
+                    state.fields[data.id] = data;
+                    renderFields();
+                    log(type, `Field-${data.id}: 💧${data.moisture}% 🌱${data.growth}%`);
+                    break;
+
+                case 'WEATHER_UPDATE':
+                    updateWeather(data);
+                    log(type, `Weather: ${data.weather}`);
+                    break;
+
+                case 'MOISTURE_READING':
+                    log(type, `Sensor reading: Field-${data.fieldId} = ${data.value}%`);
+                    break;
+
+                case 'BDI_UPDATE':
+                    updateBDI(data);
+                    break;
+
+                case 'AGENT_START':
+                    state.agents[data.agent] = data;
+                    renderAgents();
+                    log(type, `${data.agent} started (${data.type || data.agentType})`);
+                    break;
+
+                case 'AGENT_INTERACTION':
+                    log(type, `${data.from} → ${data.to}: ${data.content || data.messageType}`);
+                    break;
+
+                case 'WATER_TANK':
+                    updateWaterTank(data);
+                    break;
+
+                case 'SUPPLIER_PROPOSAL':
+                case 'SUPPLIER_WON':
+                    log(type, `${data.supplier}: $${data.price?.toFixed(2) || 'N/A'}`);
+                    break;
+
+                case 'CONNECTION':
+                    log(type, data.message || 'Connected');
+                    break;
+
+                default:
+                    // Log other types silently
+                    if (!['BDI_UPDATE'].includes(type)) {
+                        log(type, JSON.stringify(data).substring(0, 60));
+                    }
+            }
+        }
+
+        // Render fields
+        function renderFields() {
+            const grid = document.getElementById('fieldGrid');
+            grid.innerHTML = '';
+
+            const cropIcons = { wheat: '🌾', corn: '🌽', vegetables: '🥬', rice: '🍚' };
+
+            Object.values(state.fields).forEach(f => {
+                const isLow = f.moisture < 30;
+                const isReady = f.growth >= 100;
+                const card = document.createElement('div');
+                card.className = `field-card ${isLow ? 'danger' : ''} ${isReady ? 'ready' : ''}`;
+                card.innerHTML = `
+                    <div class="field-header">
+                        <span class="field-name">Field ${f.id}</span>
+                        <span class="field-stage">${f.stage || 'Seed'}</span>
+                    </div>
+                    <div class="field-crop">
+                        <span class="crop-icon">${cropIcons[f.crop] || '🌱'}</span>
+                        <span class="crop-name">${f.crop || 'Wheat'}</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>💧 Moisture</span>
+                        <span>${f.moisture}%</span>
+                    </div>
+                    <div class="stat-bar"><div class="stat-fill moisture" style="width:${f.moisture}%"></div></div>
+                    <div class="stat-row">
+                        <span>🌱 Growth</span>
+                        <span>${f.growth}%</span>
+                    </div>
+                    <div class="stat-bar"><div class="stat-fill growth" style="width:${f.growth}%"></div></div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Render agents
+        function renderAgents() {
+            const grid = document.getElementById('agentGrid');
+            grid.innerHTML = '';
+
+            const icons = {
+                'FarmerBDI': '🧠', 'Predictor': '🔮', 'Weather': '🌤️', 'Controller': '🎮',
+                'Harvester': '🚜', 'Drone': '🚁', 'Supplier': '🏪', 'Sensor': '📡', 'CropGrowth': '🌱'
+            };
+
+            Object.values(state.agents).forEach(a => {
+                const agentType = (a.type || a.agentType || 'unknown').toLowerCase();
+                const card = document.createElement('div');
+                const iconKey = Object.keys(icons).find(k => a.agent.includes(k)) || 'Agent';
+                card.className = `agent-card ${agentType}`;
+                card.innerHTML = `
+                    <span class="agent-icon">${icons[iconKey] || '🤖'}</span>
+                    <div class="agent-info">
+                        <div class="agent-name">${a.agent}</div>
+                        <div class="agent-type">${agentType}</div>
+                    </div>
+                    <div class="agent-state"></div>
+                `;
+                grid.appendChild(card);
+            });
+
+            document.getElementById('agentCount').textContent = Object.keys(state.agents).length;
+        }
+
+        // Update weather
+        function updateWeather(data) {
+            const emojiMap = { Clear: '☀️', Cloudy: '⛅', Rain: '🌧️', Storm: '⛈️' };
+            document.getElementById('weatherEmoji').textContent = data.emoji || emojiMap[data.weather] || '🌤️';
+            document.getElementById('weatherName').textContent = data.weather;
+            document.getElementById('rainChance').textContent = data.rainChance || 10;
+        }
+
+        // Update BDI
+        function updateBDI(data) {
+            if (data.beliefs) {
+                document.getElementById('beliefs').innerHTML = data.beliefs.map(b =>
+                    `<div class="bdi-item">${b}</div>`).join('') || 'No beliefs';
+            }
+            if (data.desires) {
+                document.getElementById('desires').innerHTML = data.desires.map(d =>
+                    `<div class="bdi-item">${d}</div>`).join('') || 'No desires';
+            }
+            if (data.intentions) {
+                document.getElementById('intentions').innerHTML = data.intentions.map(i =>
+                    `<div class="bdi-item">${i}</div>`).join('') || 'No intentions';
+            }
+        }
+
+        // Update water tank
+        function updateWaterTank(data) {
+            const pct = Math.round((data.current / data.max) * 100);
+            document.getElementById('tankFill').style.height = pct + '%';
+            document.getElementById('tankPct').textContent = pct + '%';
+            document.getElementById('waterCurrent').textContent = Math.round(data.current);
+        }
+
+        // Log to console
+        function log(type, message) {
+            const console = document.getElementById('console');
+            const time = new Date().toLocaleTimeString();
+            const line = document.createElement('div');
+            line.className = 'log-line';
+            line.innerHTML = `
+                <span class="log-time">${time}</span>
+                <span class="log-type ${type}">${type}</span>
+                <span class="log-msg">${message}</span>
+            `;
+            console.appendChild(line);
+            while (console.children.length > 100) console.removeChild(console.firstChild);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        // Update connection status
+        function updateConnection(status) {
+            const el = document.getElementById('connectionStatus');
+            el.className = 'connection ' + status;
+            el.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+        }
+
+        // Start
+        connect();
+    </script>
+</body>
+
+</html>
