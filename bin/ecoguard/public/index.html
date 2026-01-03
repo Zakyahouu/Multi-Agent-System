@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoGuardFarm - Multi-Agent Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(90deg, #0f3460 0%, #16537e 100%);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo h1 {
+            font-size: 1.8rem;
+            color: #4ecca3;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff4444;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #4ecca3;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 20px;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #aaa;
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #4ecca3;
+        }
+
+        /* Main Layout */
+        main {
+            display: grid;
+            grid-template-columns: 1fr 300px 350px;
+            gap: 20px;
+            padding: 20px;
+            height: calc(100vh - 70px);
+        }
+
+        /* Panels */
+        .panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .panel-title {
+            font-size: 1.1rem;
+            color: #4ecca3;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(78, 204, 163, 0.3);
+        }
+
+        /* Fields Panel */
+        .fields-grid {
+            display: grid;
+            gap: 15px;
+        }
+
+        .field-card {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+            border-radius: 10px;
+            padding: 15px;
+            border-left: 4px solid #4ecca3;
+        }
+
+        .field-card.diseased {
+            border-left-color: #ff6b6b;
+            background: linear-gradient(145deg, rgba(255, 107, 107, 0.1), rgba(255, 255, 255, 0.02));
+        }
+
+        .field-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .field-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .field-crop {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            background: rgba(78, 204, 163, 0.2);
+            border-radius: 15px;
+            font-size: 0.85rem;
+        }
+
+        .field-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .field-stat {
+            text-align: center;
+        }
+
+        .field-stat-icon {
+            font-size: 1.2rem;
+        }
+
+        .field-stat-value {
+            display: block;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .field-stat-label {
+            font-size: 0.7rem;
+            color: #888;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-fill.moisture {
+            background: #4facfe;
+        }
+
+        .progress-fill.health {
+            background: #4ecca3;
+        }
+
+        .progress-fill.scan {
+            background: #a855f7;
+        }
+
+        .progress-fill.growth {
+            background: #fbbf24;
+        }
+
+        .disease-badge {
+            margin-top: 10px;
+            padding: 6px 12px;
+            background: rgba(255, 107, 107, 0.3);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Agents Panel */
+        .agents-section {
+            margin-bottom: 20px;
+        }
+
+        .agents-section h3 {
+            font-size: 0.9rem;
+            color: #aaa;
+            margin-bottom: 10px;
+        }
+
+        .agent-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .agent-icon {
+            font-size: 1.5rem;
+        }
+
+        .agent-info {
+            flex: 1;
+        }
+
+        .agent-name {
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .agent-status {
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .agent-battery {
+            width: 40px;
+            height: 18px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 3px;
+            overflow: hidden;
+            border: 1px solid #555;
+        }
+
+        .battery-fill {
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        .battery-fill.high {
+            background: #4ecca3;
+        }
+
+        .battery-fill.medium {
+            background: #fbbf24;
+        }
+
+        .battery-fill.low {
+            background: #ff6b6b;
+        }
+
+        /* Logs Panel */
+        .logs-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            height: 100%;
+        }
+
+        .log-section {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 10px;
+            overflow-y: auto;
+            max-height: 200px;
+        }
+
+        .log-section h3 {
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-bottom: 8px;
+        }
+
+        .log-entry {
+            font-size: 0.8rem;
+            padding: 4px 8px;
+            margin-bottom: 4px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .log-entry.ai {
+            border-left: 3px solid #a855f7;
+        }
+
+        .log-entry.market {
+            border-left: 3px solid #4ecca3;
+        }
+
+        .log-entry.alert {
+            border-left: 3px solid #ff6b6b;
+        }
+
+        .log-time {
+            color: #666;
+            font-size: 0.7rem;
+            margin-right: 8px;
+        }
+
+        /* BDI Section */
+        .bdi-section {
+            margin-bottom: 15px;
+        }
+
+        .bdi-section h4 {
+            font-size: 0.85rem;
+            color: #4ecca3;
+            margin-bottom: 8px;
+        }
+
+        .bdi-list {
+            list-style: none;
+            font-size: 0.8rem;
+        }
+
+        .bdi-list li {
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Inventory */
+        .inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .inventory-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .inventory-item span:first-child {
+            font-size: 1.2rem;
+        }
+
+        .inventory-item span:last-child {
+            font-weight: bold;
+        }
+
+        /* Footer */
+        footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.5);
+            text-align: center;
+            font-size: 0.8rem;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="logo">
+            <span style="font-size: 2rem;">🌿</span>
+            <h1>EcoGuardFarm</h1>
+        </div>
+        <div class="connection-status">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">Connecting...</span>
+        </div>
+        <div class="header-stats">
+            <div class="stat-box">
+                <div class="stat-label">Budget</div>
+                <div class="stat-value" id="budgetValue">$0.00</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Agents</div>
+                <div class="stat-value" id="agentCount">0</div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Left: Fields -->
+        <div class="panel">
+            <h2 class="panel-title">🌾 Fields</h2>
+            <div class="fields-grid" id="fieldsContainer">
+                <div class="field-card">
+                    <div class="field-header">
+                        <span class="field-name">Waiting for data...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center: Agents -->
+        <div class="panel">
+            <h2 class="panel-title">🤖 Agents</h2>
+
+            <div class="agents-section">
+                <h3>📡 Drones</h3>
+                <div id="dronesContainer"></div>
+            </div>
+
+            <div class="agents-section">
+                <h3>🚜 Harvesters</h3>
+                <div id="harvestersContainer"></div>
+            </div>
+
+            <div class="agents-section">
+                <h3>🧪 Sprayers</h3>
+                <div id="sprayersContainer"></div>
+            </div>
+
+            <div class="agents-section">
+                <h3>📦 Inventory</h3>
+                <div class="inventory-grid" id="inventoryContainer"></div>
+            </div>
+        </div>
+
+        <!-- Right: Logs & BDI -->
+        <div class="panel">
+            <h2 class="panel-title">🧠 BDI & Logs</h2>
+
+            <div class="bdi-section">
+                <h4>Beliefs</h4>
+                <ul class="bdi-list" id="beliefsList"></ul>
+            </div>
+
+            <div class="bdi-section">
+                <h4>Intentions</h4>
+                <ul class="bdi-list" id="intentionsList"></ul>
+            </div>
+
+            <div class="logs-container">
+                <div class="log-section">
+                    <h3>🤖 AI Results</h3>
+                    <div id="aiLog"></div>
+                </div>
+
+                <div class="log-section">
+                    <h3>💹 Market</h3>
+                    <div id="marketLog"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        EcoGuardFarm Multi-Agent System | All updates from backend via WebSocket
+    </footer>
+
+    <script>
+        // ============================================================
+        //                    STATE - BACKEND DRIVEN
+        // ============================================================
+        const state = {
+            fields: {},
+            drones: {},
+            harvesters: {},
+            sprayers: {},
+            inventory: {},
+            bdi: { beliefs: [], desires: [], intentions: [] }
+        };
+
+        // ============================================================
+        //                    WEBSOCKET CONNECTION
+        // ============================================================
+        let ws = null;
+        let reconnectAttempts = 0;
+
+        function connect() {
+            ws = new WebSocket('ws://localhost:8080/ws');
+
+            ws.onopen = () => {
+                console.log('[WS] Connected');
+                document.getElementById('statusDot').classList.add('connected');
+                document.getElementById('statusText').textContent = 'Connected';
+                reconnectAttempts = 0;
+            };
+
+            ws.onclose = () => {
+                console.log('[WS] Disconnected');
+                document.getElementById('statusDot').classList.remove('connected');
+                document.getElementById('statusText').textContent = 'Disconnected';
+
+                // Reconnect
+                setTimeout(() => {
+                    reconnectAttempts++;
+                    if (reconnectAttempts < 10) {
+                        connect();
+                    }
+                }, 2000);
+            };
+
+            ws.onerror = (error) => {
+                console.error('[WS] Error:', error);
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    handleMessage(message);
+                } catch (e) {
+                    console.error('[WS] Parse error:', e);
+                }
+            };
+        }
+
+        // ============================================================
+        //                    MESSAGE HANDLER
+        // ============================================================
+        function handleMessage(message) {
+            const { type, data, timestamp } = message;
+
+            switch (type) {
+                case 'CONNECTION':
+                    console.log('[Backend]', data.message);
+                    break;
+
+                case 'FIELD_UPDATE':
+                    handleFieldUpdate(data);
+                    break;
+
+                case 'DRONE_MOVE':
+                    handleDroneUpdate(data);
+                    break;
+
+                case 'SPRAYER_MOVE':
+                    handleSprayerUpdate(data);
+                    break;
+
+                case 'HARVESTER_MOVE':
+                    handleHarvesterUpdate(data);
+                    break;
+
+                case 'AI_RESULT':
+                    handleAIResult(data, timestamp);
+                    break;
+
+                case 'MARKET_EVENT':
+                    handleMarketEvent(data, timestamp);
+                    break;
+
+                case 'INVENTORY_UPDATE':
+                    handleInventoryUpdate(data);
+                    break;
+
+                case 'BDI_UPDATE':
+                    handleBDIUpdate(data);
+                    break;
+
+                case 'HARVEST_EVENT':
+                    addLog('marketLog', '🌾 Harvested ' + data.crop + ' from Field-' + data.fieldId, 'market');
+                    break;
+
+                default:
+                    console.log('[Backend] Unknown:', type, data);
+            }
+        }
+
+        // ============================================================
+        //                    UPDATE HANDLERS
+        // ============================================================
+        function handleFieldUpdate(data) {
+            state.fields[data.fieldId] = data;
+            renderFields();
+        }
+
+        function handleDroneUpdate(data) {
+            state.drones[data.droneId] = data;
+            renderDrones();
+            updateAgentCount();
+        }
+
+        function handleSprayerUpdate(data) {
+            state.sprayers[data.sprayerId] = data;
+            renderSprayers();
+        }
+
+        function handleHarvesterUpdate(data) {
+            state.harvesters[data.harvesterId] = data;
+            renderHarvesters();
+        }
+
+        function handleAIResult(data, timestamp) {
+            const time = new Date(timestamp).toLocaleTimeString();
+            const disease = data.disease || 'Healthy';
+            const log = `${data.droneId} → Field-${data.fieldId}: ${disease} (${data.confidence}%)`;
+            addLog('aiLog', log, 'ai');
+        }
+
+        function handleMarketEvent(data, timestamp) {
+            let log = '';
+            if (data.type === 'PROPOSE') {
+                log = `💰 ${data.supplier}: $${data.price.toFixed(2)} for ${data.item}`;
+            } else if (data.type === 'BID') {
+                log = `💵 ${data.client}: $${data.bid.toFixed(2)} for ${data.crop}`;
+            } else if (data.type === 'SALE') {
+                log = `✅ ${data.supplier} sold ${data.item} for $${data.price.toFixed(2)}`;
+            } else if (data.type === 'PURCHASE') {
+                log = `🎉 ${data.client} bought ${data.crop} for $${data.price.toFixed(2)}`;
+            } else if (data.type === 'AUCTION_COMPLETE') {
+                log = `🏆 ${data.buyer} won ${data.crop} - paid $${data.payment.toFixed(2)} (2nd price)`;
+            }
+            if (log) addLog('marketLog', log, 'market');
+        }
+
+        function handleInventoryUpdate(data) {
+            state.inventory = data;
+            renderInventory();
+        }
+
+        function handleBDIUpdate(data) {
+            state.bdi = data;
+            renderBDI();
+        }
+
+        // ============================================================
+        //                    RENDER FUNCTIONS
+        // ============================================================
+        function renderFields() {
+            const container = document.getElementById('fieldsContainer');
+            const fieldIds = Object.keys(state.fields).sort((a, b) => a - b);
+
+            if (fieldIds.length === 0) {
+                container.innerHTML = '<div class="field-card"><div class="field-header"><span class="field-name">Waiting for data...</span></div></div>';
+                return;
+            }
+
+            container.innerHTML = fieldIds.map(id => {
+                const f = state.fields[id];
+                const diseased = f.disease && f.disease !== 'null';
+
+                return `
+                    <div class="field-card ${diseased ? 'diseased' : ''}">
+                        <div class="field-header">
+                            <span class="field-name">Field ${id}</span>
+                            <span class="field-crop">${getCropEmoji(f.cropType)} ${f.cropType}</span>
+                        </div>
+                        <div class="field-stats">
+                            <div class="field-stat">
+                                <span class="field-stat-icon">💧</span>
+                                <span class="field-stat-value">${f.moisture}%</span>
+                                <span class="field-stat-label">Water</span>
+                                <div class="progress-bar"><div class="progress-fill moisture" style="width: ${f.moisture}%"></div></div>
+                            </div>
+                            <div class="field-stat">
+                                <span class="field-stat-icon">❤️</span>
+                                <span class="field-stat-value">${f.health}%</span>
+                                <span class="field-stat-label">Health</span>
+                                <div class="progress-bar"><div class="progress-fill health" style="width: ${f.health}%"></div></div>
+                            </div>
+                            <div class="field-stat">
+                                <span class="field-stat-icon">📡</span>
+                                <span class="field-stat-value">${f.scanLevel}%</span>
+                                <span class="field-stat-label">Scan</span>
+                                <div class="progress-bar"><div class="progress-fill scan" style="width: ${f.scanLevel}%"></div></div>
+                            </div>
+                            <div class="field-stat">
+                                <span class="field-stat-icon">🌱</span>
+                                <span class="field-stat-value">${f.growth}%</span>
+                                <span class="field-stat-label">Growth</span>
+                                <div class="progress-bar"><div class="progress-fill growth" style="width: ${f.growth}%"></div></div>
+                            </div>
+                        </div>
+                        ${diseased ? `<div class="disease-badge">⚠️ ${f.disease}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderDrones() {
+            const container = document.getElementById('dronesContainer');
+            const ids = Object.keys(state.drones);
+
+            if (ids.length === 0) {
+                container.innerHTML = '<div class="agent-card"><span class="agent-icon">📡</span><span>Waiting...</span></div>';
+                return;
+            }
+
+            container.innerHTML = ids.map(id => {
+                const d = state.drones[id];
+                const batteryClass = d.battery > 50 ? 'high' : d.battery > 20 ? 'medium' : 'low';
+                return `
+                    <div class="agent-card">
+                        <span class="agent-icon">🛸</span>
+                        <div class="agent-info">
+                            <div class="agent-name">${id}</div>
+                            <div class="agent-status">${d.state} @ ${d.location}</div>
+                        </div>
+                        <div class="agent-battery"><div class="battery-fill ${batteryClass}" style="width: ${d.battery}%"></div></div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderHarvesters() {
+            const container = document.getElementById('harvestersContainer');
+            const ids = Object.keys(state.harvesters);
+
+            if (ids.length === 0) {
+                container.innerHTML = '<div class="agent-card"><span class="agent-icon">🚜</span><span>Waiting...</span></div>';
+                return;
+            }
+
+            container.innerHTML = ids.map(id => {
+                const h = state.harvesters[id];
+                const batteryClass = h.battery > 50 ? 'high' : h.battery > 20 ? 'medium' : 'low';
+                return `
+                    <div class="agent-card">
+                        <span class="agent-icon">🚜</span>
+                        <div class="agent-info">
+                            <div class="agent-name">${id}</div>
+                            <div class="agent-status">${h.state} @ ${h.location}</div>
+                        </div>
+                        <div class="agent-battery"><div class="battery-fill ${batteryClass}" style="width: ${h.battery}%"></div></div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderSprayers() {
+            const container = document.getElementById('sprayersContainer');
+            const ids = Object.keys(state.sprayers);
+
+            if (ids.length === 0) {
+                container.innerHTML = '<div class="agent-card"><span class="agent-icon">🧪</span><span>Waiting...</span></div>';
+                return;
+            }
+
+            container.innerHTML = ids.map(id => {
+                const s = state.sprayers[id];
+                const batteryClass = s.battery > 50 ? 'high' : s.battery > 20 ? 'medium' : 'low';
+                return `
+                    <div class="agent-card">
+                        <span class="agent-icon">🧪</span>
+                        <div class="agent-info">
+                            <div class="agent-name">${id}</div>
+                            <div class="agent-status">${s.state} ${s.carrying ? '(' + s.carrying + ')' : ''}</div>
+                        </div>
+                        <div class="agent-battery"><div class="battery-fill ${batteryClass}" style="width: ${s.battery}%"></div></div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderInventory() {
+            const container = document.getElementById('inventoryContainer');
+            const items = Object.entries(state.inventory).filter(([k, v]) => v > 0);
+
+            if (items.length === 0) {
+                container.innerHTML = '<div>Empty</div>';
+                return;
+            }
+
+            container.innerHTML = items.map(([item, count]) => {
+                return `
+                    <div class="inventory-item">
+                        <span>${getItemEmoji(item)}</span>
+                        <span>${item}</span>
+                        <span>x${count}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderBDI() {
+            const beliefsList = document.getElementById('beliefsList');
+            const intentionsList = document.getElementById('intentionsList');
+
+            if (state.bdi.beliefs) {
+                beliefsList.innerHTML = state.bdi.beliefs.map(b => `<li>${b}</li>`).join('');
+            }
+
+            if (state.bdi.intentions) {
+                intentionsList.innerHTML = state.bdi.intentions.map(i => `<li>${i}</li>`).join('');
+            }
+        }
+
+        function updateAgentCount() {
+            const count = Object.keys(state.drones).length +
+                Object.keys(state.harvesters).length +
+                Object.keys(state.sprayers).length;
+            document.getElementById('agentCount').textContent = count;
+        }
+
+        function addLog(containerId, message, type) {
+            const container = document.getElementById(containerId);
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + type;
+            entry.innerHTML = `<span class="log-time">${new Date().toLocaleTimeString()}</span>${message}`;
+            container.insertBefore(entry, container.firstChild);
+
+            // Keep only last 20 entries
+            while (container.children.length > 20) {
+                container.removeChild(container.lastChild);
+            }
+        }
+
+        // ============================================================
+        //                    HELPERS
+        // ============================================================
+        function getCropEmoji(cropType) {
+            switch (cropType) {
+                case 'CORN': return '🌽';
+                case 'WHEAT': return '🌾';
+                case 'RICE': return '🍚';
+                default: return '🌱';
+            }
+        }
+
+        function getItemEmoji(item) {
+            const emojis = {
+                'WATER': '💧',
+                'PESTICIDE_A': '🧪',
+                'FUNGICIDE_X': '🧫',
+                'ANTIBIOTIC_Z': '💊',
+                'CORN_CROP': '🌽',
+                'WHEAT_CROP': '🌾',
+                'RICE_CROP': '🍚'
+            };
+            return emojis[item] || '📦';
+        }
+
+        // ============================================================
+        //                    INIT
+        // ============================================================
+        connect();
+    </script>
+</body>
+
+</html>
