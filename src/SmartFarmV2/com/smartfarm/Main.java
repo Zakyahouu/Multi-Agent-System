@@ -79,8 +79,24 @@ public class Main {
             System.out.println("[Main] Step 3: Creating Main-Container...");
             Profile mainProfile = new ProfileImpl();
             mainProfile.setParameter(Profile.MAIN_HOST, "localhost");
-            mainProfile.setParameter(Profile.GUI, "false");
+            
+            // CHECK GUI FLAG
+            String guiProp = System.getProperty("jade.gui", "false");
+            mainProfile.setParameter(Profile.GUI, guiProp);
+            
             mainContainer = runtime.createMainContainer(mainProfile);
+            System.out.println("[Main] Main-Container created. GUI=" + guiProp);
+
+            // CHECK SNIFFER FLAG
+            if ("true".equals(System.getProperty("jade.sniffer"))) {
+                try {
+                    AgentController sniffer = mainContainer.createNewAgent("rma-sniffer", "jade.tools.sniffer.Sniffer", new Object[0]);
+                    sniffer.start();
+                    System.out.println("[Main] Sniffer Agent started.");
+                } catch (Exception e) {
+                    System.err.println("[Main] Failed to start Sniffer: " + e.getMessage());
+                }
+            }
             System.out.println("[Main] Main-Container created.");
 
             // Step 4: Create Base-Container (agent home)

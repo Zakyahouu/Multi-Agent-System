@@ -74,4 +74,4 @@ echo "[Run] Starting SmartFarmV2..."
 echo ""
 
 # Run
-java -cp "$FULL_CP" com.smartfarm.Main
+java -Djade.gui=true -Djade.sniffer=true -cp "$FULL_CP" com.smartfarm.Main
