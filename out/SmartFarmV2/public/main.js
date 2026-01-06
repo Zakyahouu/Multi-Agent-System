@@ -476,8 +476,8 @@ function handleAgentMove(data) {
 
 const MARKET_ITEMS = [
     // LAND
-    { id: 'WHEAT_FIELD', type: 'LAND', name: 'Wheat Field', icon: '🌾', price: 1000, desc: '', cmd: 'WHEAT', category: 'LAND' },
-    { id: 'CORN_FIELD', type: 'LAND', name: 'Corn Field', icon: '🌽', price: 1500, desc: '', cmd: 'CORN', category: 'LAND' },
+    { id: 'WHEAT_FIELD', type: 'LAND', name: 'Wheat Field', icon: '🌾', price: 10000, desc: '', cmd: 'WHEAT', category: 'LAND' },
+    { id: 'CORN_FIELD', type: 'LAND', name: 'Corn Field', icon: '🌽', price: 15000, desc: '', cmd: 'CORN', category: 'LAND' },
     
     // EQUIPMENT
     { id: 'SMART_DRONE', type: 'ITEM', name: 'Better Drone', icon: '🤖', price: 2000, desc: '+50% Speed.', cmd: 'SMART_DRONE', category: 'EQUIPMENT' },

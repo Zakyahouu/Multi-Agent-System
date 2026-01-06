@@ -305,6 +305,11 @@ body {
     border-left: 4px solid var(--accent-cyan);
 }
 
+.card-system {
+    grid-column: span 3;
+    border-left: 4px solid var(--accent-green);
+}
+
 .card-field {
     grid-column: span 6;
     border-top: 4px solid var(--accent-green);
