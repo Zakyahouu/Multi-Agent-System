@@ -98,13 +98,17 @@ public class SprayerAgent extends Agent {
                     performTreatment(fieldId, disease, requester);
                     Thread.sleep(1000);
 
+                } catch (Exception e) {
+                    System.err.println("[" + agentId + "] Error during treatment: " + e.getMessage());
+                    e.printStackTrace();
+                    broadcastLog(agentId + " error: " + e.getMessage());
+                } finally {
                     moveToContainer("Base-Container");
 
                     isBusy = false;
                     status = "Idle";
                     broadcastState();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    System.out.println("[" + agentId + "] Treatment mission ended. Status: Idle");
                 }
             }
         });

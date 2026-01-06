@@ -144,15 +144,19 @@ public class IrrigatorAgent extends Agent {
                     performWatering(fieldId, requester);
                     Thread.sleep(1000);
 
-                    // Return to base
+                } catch (Exception e) {
+                    System.err.println("[" + agentId + "] Error during watering: " + e.getMessage());
+                    e.printStackTrace();
+                    broadcastLog(agentId + " error: " + e.getMessage());
+                } finally {
+                    // Return to base (ALWAYS)
                     returnToBase();
 
+                    // Reset state (ALWAYS)
                     isBusy = false;
                     status = "Idle";
                     broadcastState();
-
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    System.out.println("[" + agentId + "] Watering mission ended. Status: Idle");
                 }
             }
         });

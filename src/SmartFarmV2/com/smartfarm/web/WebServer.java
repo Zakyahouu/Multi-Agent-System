@@ -41,8 +41,31 @@ public class WebServer {
             });
 
             ws.onMessage(ctx -> {
-                System.out.println("[WebServer] Received: " + ctx.message());
-                // Handle incoming messages (for future phases)
+                try {
+                    String msg = ctx.message();
+                    System.out.println("[WebServer] Received: " + msg);
+                    
+                    if (msg.contains("BUY_FIELD")) {
+                        // Extract payload nicely
+                        String payload = "WHEAT"; // Default
+                        if (msg.contains("CORN")) payload = "CORN";
+                        else if (msg.contains("EXPERIMENTAL")) payload = "EXPERIMENTAL";
+                        else if (msg.contains("WHEAT")) payload = "WHEAT";
+                        
+                        System.out.println("[WebServer] Routing command BUY_FIELD:" + payload + " to FarmManager");
+                        
+                        // Send to FarmManager via O2A
+                        jade.wrapper.AgentController ac = com.smartfarm.Main.getFarmManager();
+                        if (ac != null) {
+                            ac.putO2AObject("BUY_FIELD:" + payload, jade.wrapper.AgentController.ASYNC);
+                        } else {
+                            System.err.println("[WebServer] FarmManager AgentController is null!");
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("[WebServer] Error handling message: " + e.getMessage());
+                    e.printStackTrace();
+                }
             });
 
             ws.onError(ctx -> {

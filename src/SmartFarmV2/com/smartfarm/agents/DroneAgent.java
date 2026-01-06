@@ -134,15 +134,19 @@ public class DroneAgent extends Agent {
                     String detectedDisease = performAIScan(targetField, fieldAgent);
                     Thread.sleep(1500);
 
-                    // Step 3: Return to base
+                } catch (Exception e) {
+                    System.err.println("[" + droneId + "] Error during mission: " + e.getMessage());
+                    e.printStackTrace();
+                    broadcastLog(droneId + " error: " + e.getMessage());
+                } finally {
+                    // Step 3: Return to base (ALWAYS)
                     returnToBase();
 
+                    // Step 4: Reset state (ALWAYS)
                     isBusy = false;
                     status = "Idle";
                     broadcastState();
-
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    System.out.println("[" + droneId + "] Mission complete/aborted. Status: Idle");
                 }
             }
         });

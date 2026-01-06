@@ -1,1459 +1,337 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartFarm V2 - Multi-Agent Simulation</title>
-    <style>
-        :root {
-            --bg-primary: #0a1628;
-            --bg-secondary: #1a2942;
-            --bg-tertiary: #243b55;
-            --accent-green: #10b981;
-            --accent-blue: #3b82f6;
-            --accent-orange: #f59e0b;
-            --accent-red: #ef4444;
-            --accent-purple: #8b5cf6;
-            --accent-cyan: #06b6d4;
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --border-color: #334155;
-            --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            --glow-green: 0 0 20px rgba(16, 185, 129, 0.3);
-            --glow-blue: 0 0 20px rgba(59, 130, 246, 0.3);
-            --night-opacity: 0;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        /* Header */
-        .header {
-            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border-color);
-            box-shadow: var(--shadow);
-        }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .logo h1 {
-            font-size: 1.8rem;
-            background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .status-bar {
-            display: flex;
-            gap: 2rem;
-            align-items: center;
-        }
-
-        .status-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background: var(--bg-primary);
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-        }
-
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        .status-dot.connected {
-            background: var(--accent-green);
-        }
-
-        .status-dot.disconnected {
-            background: var(--accent-red);
-        }
-
-        @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.5;
-            }
-        }
-
-        /* Main Layout */
-        .main-container {
-            display: grid;
-            grid-template-columns: 1fr 300px;
-            gap: 1.5rem;
-            padding: 1.5rem;
-            max-height: calc(100vh - 80px);
-        }
-
-        /* Farm View */
-        .farm-view {
-            background: var(--bg-secondary);
-            border-radius: 16px;
-            padding: 1.5rem;
-            border: 1px solid var(--border-color);
-            box-shadow: var(--shadow);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .farm-view h2 {
-            margin-bottom: 1rem;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .farm-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            grid-template-rows: repeat(3, 1fr);
-            gap: 1rem;
-            height: calc(100% - 2rem);
-            min-height: 400px;
-        }
-
-        /* Containers */
-        .container-box {
-            background: var(--bg-tertiary);
-            border-radius: 12px;
-            padding: 1rem;
-            border: 2px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .container-box:hover {
-            border-color: var(--accent-blue);
-            box-shadow: var(--glow-blue);
-            transform: translateY(-2px);
-        }
-
-        .container-box.base {
-            grid-column: 1;
-            grid-row: 1 / 3;
-            background: linear-gradient(135deg, #1e3a5f, #2d4a6f);
-            border-color: var(--accent-blue);
-        }
-
-        .container-box.warehouse {
-            grid-column: 2;
-            grid-row: 1;
-            background: linear-gradient(135deg, #3d2f1f, #5a4530);
-            border-color: var(--accent-orange);
-        }
-
-        .container-box.market {
-            grid-column: 3;
-            grid-row: 1;
-            background: linear-gradient(135deg, #2f1f3d, #4a3060);
-            border-color: var(--accent-purple);
-        }
-
-        .container-box.field {
-            background: linear-gradient(135deg, #1f3d2f, #2a5a40);
-            border-color: var(--accent-green);
-        }
-
-        .container-box.field.empty {
-            background: linear-gradient(135deg, #2a2a2a, #3a3a3a);
-            border-color: var(--border-color);
-            border-style: dashed;
-        }
-
-        .container-icon {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .container-label {
-            font-weight: 600;
-            font-size: 0.9rem;
-            text-align: center;
-        }
-
-        .container-info {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            margin-top: 0.25rem;
-        }
-
-        /* Agents in containers */
-        .agents-list {
-            display: flex;
-            gap: 0.25rem;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-top: 0.5rem;
-        }
-
-        .agent-icon {
-            width: 28px;
-            height: 28px;
-            background: var(--bg-primary);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.9rem;
-            border: 2px solid var(--accent-blue);
-            transition: all 0.3s ease;
-        }
-
-        .agent-icon:hover {
-            transform: scale(1.2);
-            box-shadow: var(--glow-blue);
-        }
-
-        .agent-icon.moving {
-            animation: agentMove 1s infinite;
-        }
-
-        @keyframes agentMove {
-
-            0%,
-            100% {
-                transform: translateX(0);
-            }
-
-            50% {
-                transform: translateX(3px);
-            }
-        }
-
-        /* Field Progress Bars */
-        .field-stats {
-            width: 100%;
-            margin-top: 0.5rem;
-        }
-
-        .stat-bar {
-            display: flex;
-            align-items: center;
-            gap: 0.3rem;
-            margin-bottom: 0.25rem;
-        }
-
-        .stat-icon {
-            font-size: 0.7rem;
-            width: 14px;
-        }
-
-        .stat-track {
-            flex: 1;
-            height: 8px;
-            background: var(--bg-primary);
-            border-radius: 4px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .stat-fill {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 0.5s ease, background-color 0.3s ease;
-        }
-
-        .stat-fill.moisture {
-            background: var(--accent-blue);
-        }
-
-        .stat-fill.moisture.low {
-            background: #60a5fa;
-        }
-
-        .stat-fill.moisture.critical {
-            background: var(--accent-red);
-            animation: pulse 1s infinite;
-        }
-
-        .stat-fill.health {
-            background: var(--accent-green);
-        }
-
-        .stat-fill.health.low {
-            background: var(--accent-orange);
-        }
-
-        .stat-fill.health.critical {
-            background: var(--accent-red);
-            animation: pulse 1s infinite;
-        }
-
-        .stat-fill.growth {
-            background: var(--accent-orange);
-        }
-
-        .stat-fill.growth.ready {
-            background: var(--accent-green);
-            animation: glow 1s infinite;
-        }
-
-        .stat-fill.scan {
-            background: var(--accent-cyan);
-        }
-
-        .stat-fill.scan.low {
-            background: #67e8f9;
-            opacity: 0.5;
-        }
-
-        .stat-value {
-            font-size: 0.65rem;
-            font-weight: 600;
-            min-width: 28px;
-            text-align: right;
-            color: var(--text-secondary);
-        }
-
-        /* Disease Indicator */
-        .disease-indicator {
-            position: absolute;
-            top: 4px;
-            right: 4px;
-            background: var(--accent-red);
-            color: white;
-            font-size: 0.6rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: 600;
-            animation: diseaseFlash 1s infinite;
-            display: none;
-            z-index: 10;
-        }
-
-        .disease-indicator.active {
-            display: block;
-        }
-
-        @keyframes diseaseFlash {
-
-            0%,
-            100% {
-                opacity: 1;
-                background: var(--accent-red);
-            }
-
-            50% {
-                opacity: 0.7;
-                background: #dc2626;
-            }
-        }
-
-        @keyframes glow {
-
-            0%,
-            100% {
-                box-shadow: 0 0 5px var(--accent-green);
-            }
-
-            50% {
-                box-shadow: 0 0 15px var(--accent-green);
-            }
-        }
-
-        /* Sick field border effect */
-        .container-box.field.sick {
-            border-color: var(--accent-red) !important;
-            animation: sickPulse 2s infinite;
-        }
-
-        @keyframes sickPulse {
-
-            0%,
-            100% {
-                box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
-            }
-
-            50% {
-                box-shadow: 0 0 25px rgba(239, 68, 68, 0.6);
-            }
-        }
-
-        /* Ready for harvest effect */
-        .container-box.field.ready {
-            border-color: #22c55e !important;
-            animation: readyPulse 1.5s infinite;
-        }
-
-        @keyframes readyPulse {
-
-            0%,
-            100% {
-                box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
-            }
-
-            50% {
-                box-shadow: 0 0 25px rgba(34, 197, 94, 0.6);
-            }
-        }
-
-        /* Worker at field indicator */
-        .worker-at-field {
-            position: absolute;
-            bottom: 4px;
-            left: 4px;
-            display: flex;
-            gap: 2px;
-        }
-
-        .worker-at-field .worker-icon {
-            font-size: 0.8rem;
-            background: var(--bg-primary);
-            padding: 2px 4px;
-            border-radius: 4px;
-            border: 1px solid var(--accent-blue);
-            animation: workerBounce 1s infinite;
-        }
-
-        @keyframes workerBounce {
-
-            0%,
-            100% {
-                transform: translateY(0);
-            }
-
-            50% {
-                transform: translateY(-3px);
-            }
-        }
-
-        /* Empty field overlay */
-        .empty-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-radius: 12px;
-            z-index: 5;
-        }
-
-        .empty-overlay.active {
-            display: flex;
-        }
-
-        .empty-overlay span {
-            font-size: 1.5rem;
-        }
-
-        .empty-overlay button {
-            margin-top: 0.5rem;
-            padding: 0.4rem 1rem;
-            background: var(--accent-green);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        .empty-overlay button:hover {
-            background: #059669;
-        }
-
-        /* Day/Night overlay */
-        .night-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(to bottom, rgba(0, 0, 30, 0.5), rgba(0, 0, 60, 0.4));
-            pointer-events: none;
-            z-index: 100;
-            opacity: var(--night-opacity);
-            transition: opacity 2s ease;
-        }
-
-        /* Per-Container Mini Logs */
-        .container-log {
-            margin-top: 8px;
-            padding-top: 6px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            max-height: 60px;
-            overflow-y: auto;
-            font-size: 0.65rem;
-        }
-
-        .container-log .log-entry {
-            color: var(--text-secondary);
-            padding: 2px 0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .container-log .log-entry:first-child {
-            color: var(--text-primary);
-        }
-
-        .container-log .log-entry.water {
-            color: var(--accent-blue);
-        }
-
-        .container-log .log-entry.disease {
-            color: var(--accent-red);
-        }
-
-        .container-log .log-entry.harvest {
-            color: var(--accent-green);
-        }
-
-        .container-log .log-entry.scan {
-            color: var(--accent-purple);
-        }
-
-        /* Side Panel */
-        .side-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .panel-section {
-            background: var(--bg-secondary);
-            border-radius: 12px;
-            padding: 1rem;
-            border: 1px solid var(--border-color);
-        }
-
-        .panel-section h3 {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 0.75rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        /* Agents Panel */
-        .agent-card {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.5rem;
-            background: var(--bg-tertiary);
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
-            transition: all 0.3s ease;
-        }
-
-        .agent-card:hover {
-            background: var(--bg-primary);
-        }
-
-        .agent-avatar {
-            width: 36px;
-            height: 36px;
-            background: var(--bg-primary);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-        }
-
-        .agent-details {
-            flex: 1;
-        }
-
-        .agent-name {
-            font-weight: 600;
-            font-size: 0.85rem;
-        }
-
-        .agent-status {
-            font-size: 0.7rem;
-            color: var(--text-secondary);
-        }
-
-        .agent-battery {
-            width: 40px;
-            height: 18px;
-            background: var(--bg-primary);
-            border-radius: 4px;
-            padding: 2px;
-            position: relative;
-        }
-
-        .agent-battery::after {
-            content: '';
-            position: absolute;
-            right: -4px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 3px;
-            height: 8px;
-            background: var(--text-secondary);
-            border-radius: 0 2px 2px 0;
-        }
-
-        .battery-level {
-            height: 100%;
-            border-radius: 2px;
-            background: var(--accent-green);
-            transition: width 0.3s ease;
-        }
-
-        .battery-level.low {
-            background: var(--accent-orange);
-        }
-
-        .battery-level.critical {
-            background: var(--accent-red);
-        }
-
-        /* Inventory Panel */
-        .inventory-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.5rem;
-            background: var(--bg-tertiary);
-            border-radius: 6px;
-            margin-bottom: 0.5rem;
-        }
-
-        .inventory-icon {
-            font-size: 1.1rem;
-        }
-
-        .inventory-count {
-            font-weight: 600;
-            color: var(--accent-green);
-        }
-
-        /* Activity Log */
-        .log-container {
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        .log-entry {
-            font-size: 0.75rem;
-            padding: 0.4rem 0;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--text-secondary);
-        }
-
-        .log-entry:last-child {
-            border-bottom: none;
-        }
-
-        .log-time {
-            color: var(--accent-blue);
-            margin-right: 0.5rem;
-        }
-
-        /* Connection Overlay */
-        .connection-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(10, 22, 40, 0.95);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            transition: opacity 0.5s ease;
-        }
-
-        .connection-overlay.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .loader {
-            width: 60px;
-            height: 60px;
-            border: 4px solid var(--border-color);
-            border-top-color: var(--accent-green);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 1rem;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* Scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: var(--bg-primary);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--border-color);
-            border-radius: 3px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--text-secondary);
-        }
-    </style>
+    <title>SmartFarm</title>
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-    <!-- Night Overlay for day/night cycle -->
-    <div class="night-overlay" id="nightOverlay"></div>
 
-    <!-- Connection Overlay -->
-    <div class="connection-overlay" id="connectionOverlay">
-        <div class="loader"></div>
-        <p>Connecting to SmartFarm V2...</p>
-    </div>
+    <!-- Night Cycle Overlay -->
+    <div id="nightOverlay" class="night-overlay"></div>
 
-    <!-- Header -->
-    <header class="header">
-        <div class="logo">
-            <span style="font-size: 2rem;">🌾</span>
-            <h1>SmartFarm V2</h1>
-        </div>
-        <div class="status-bar">
-            <div class="status-item">
-                <span class="status-dot connected" id="connectionStatus"></span>
-                <span id="connectionText">Connected</span>
-            </div>
-            <div class="status-item">
-                <span>⏱️</span>
-                <span id="gameTime">Day 1 - 06:00</span>
-            </div>
-            <div class="status-item">
-                <span>☀️</span>
-                <span id="weather">Sunny</span>
-            </div>
-            <div class="status-item">
-                <span>💰</span>
-                <span id="money">$1,000</span>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <div class="main-container">
-        <!-- Farm View -->
-        <div class="farm-view">
-            <h2>🗺️ Farm Layout</h2>
-            <div class="farm-grid">
-                <!-- Base Container -->
-                <div class="container-box base" id="base-container">
-                    <div class="container-icon">🏠</div>
-                    <div class="container-label">BASE</div>
-                    <div class="container-info">Agent Home</div>
-                    <div class="agents-list" id="baseAgents">
-                        <div class="agent-icon" title="Drone-1">🤖</div>
-                        <div class="agent-icon" title="Drone-2">🤖</div>
-                        <div class="agent-icon" title="Harvester">🌾</div>
-                        <div class="agent-icon" title="Irrigator">💧</div>
-                        <div class="agent-icon" title="Sprayer">💉</div>
-                    </div>
-                    <div class="container-log" id="log-base"></div>
-                </div>
-
-                <!-- Warehouse -->
-                <div class="container-box warehouse" id="warehouse-container">
-                    <div class="container-icon">📦</div>
-                    <div class="container-label">WAREHOUSE</div>
-                    <div class="container-info" id="warehouse-info">💧100 🧪20 🌱10 📦0</div>
-                    <div class="container-log" id="log-warehouse"></div>
-                </div>
-
-                <!-- Market -->
-                <div class="container-box market" id="market-container">
-                    <div class="container-icon">💰</div>
-                    <div class="container-label">MARKET</div>
-                    <div class="container-info">Trading</div>
-                </div>
-
-                <!-- Add Field Button -->
-                <div class="container-box field empty" id="addFieldBtn" style="cursor: pointer;">
-                    <div class="container-icon">➕</div>
-                    <div class="container-label">Add Field</div>
-                    <div class="container-info">$500</div>
-                </div>
-
-                <!-- Field 1 -->
-                <div class="container-box field" id="field-1">
-                    <div class="disease-indicator" id="disease-1">🦠 SICK</div>
-                    <div class="worker-at-field" id="workers-1"></div>
-                    <div class="empty-overlay" id="empty-1">
-                        <span>🌱</span>
-                        <button onclick="plantField(1)">Plant Crop</button>
-                    </div>
-                    <div class="container-icon" id="icon-1">🌱</div>
-                    <div class="container-label">Field 1</div>
-                    <div class="container-info" id="crop-1">Corn</div>
-                    <div class="field-stats">
-                        <div class="stat-bar">
-                            <span class="stat-icon">💧</span>
-                            <div class="stat-track">
-                                <div class="stat-fill moisture" id="moisture-bar-1" style="width: 80%"></div>
-                            </div>
-                            <span class="stat-value" id="moisture-val-1">80%</span>
-                        </div>
-                        <div class="stat-bar">
-                            <span class="stat-icon">❤️</span>
-                            <div class="stat-track">
-                                <div class="stat-fill health" id="health-bar-1" style="width: 100%"></div>
-                            </div>
-                            <span class="stat-value" id="health-val-1">100%</span>
-                        </div>
-                        <div class="stat-bar">
-                            <span class="stat-icon">📈</span>
-                            <div class="stat-track">
-                                <div class="stat-fill growth" id="growth-bar-1" style="width: 0%"></div>
-                            </div>
-                            <span class="stat-value" id="growth-val-1">0%</span>
-                        </div>
-                        <div class="stat-bar">
-                            <span class="stat-icon">🔍</span>
-                            <div class="stat-track">
-                                <div class="stat-fill scan" id="scan-bar-1" style="width: 100%"></div>
-                            </div>
-                            <span class="stat-value" id="scan-val-1">100%</span>
-                        </div>
-                    </div>
-                    <div class="container-log" id="log-field-1"></div>
-                </div>
-
-                <!-- Field 2 -->
-                <div class="container-box field" id="field-2">
-                    <div class="disease-indicator" id="disease-2">🦠 SICK</div>
-                    <div class="worker-at-field" id="workers-2"></div>
-                    <div class="empty-overlay" id="empty-2">
-                        <span>🌱</span>
-                        <button onclick="plantField(2)">Plant Crop</button>
-                    </div>
-                    <div class="container-icon" id="icon-2">🌾</div>
-                    <div class="container-label">Field 2</div>
-                    <div class="container-info" id="crop-2">Wheat</div>
-                    <div class="field-stats">
-                        <div class="stat-bar">
-                            <span class="stat-icon">💧</span>
-                            <div class="stat-track">
-                                <div class="stat-fill moisture" id="moisture-bar-2" style="width: 60%"></div>
-                            </div>
-                            <span class="stat-value" id="moisture-val-2">80%</span>
-                        </div>
-                        <div class="stat-bar">
-                            <span class="stat-icon">❤️</span>
-                            <div class="stat-track">
-                                <div class="stat-fill health" id="health-bar-2" style="width: 90%"></div>
-                            </div>
-                            <span class="stat-value" id="health-val-2">100%</span>
-                        </div>
-                        <div class="stat-bar">
-                            <span class="stat-icon">📈</span>
-                            <div class="stat-track">
-                                <div class="stat-fill growth" id="growth-bar-2" style="width: 0%"></div>
-                            </div>
-                            <span class="stat-value" id="growth-val-2">0%</span>
-                        </div>
-                        <div class="stat-bar">
-                            <span class="stat-icon">🔍</span>
-                            <div class="stat-track">
-                                <div class="stat-fill scan" id="scan-bar-2" style="width: 100%"></div>
-                            </div>
-                            <span class="stat-value" id="scan-val-2">100%</span>
-                        </div>
-                    </div>
-                    <div class="container-log" id="log-field-2"></div>
+    <div class="app-container">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo-section">
+                <span class="logo-icon">🌾</span>
+                <div class="logo-text">
+                    <h1>SmartFarm V2</h1>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Field 3 (Empty slot) -->
-    <div class="container-box field empty" id="field-slot-3">
-        <div class="container-icon">🌿</div>
-        <div class="container-label">Empty</div>
-        <div class="container-info">Click to plant</div>
-    </div>
+            <nav class="nav-menu">
+                <a href="#overview" class="nav-item active">
+                    <span>📊</span> Dashboard
+                </a>
+                <a href="#market" class="nav-item">
+                    <span>🛒</span> Market
+                </a>
+                <a href="#agents" class="nav-item">
+                    <span>🤖</span> Agents
+                </a>
+                <a href="#logs" class="nav-item">
+                    <span>📜</span> System Logs
+                </a>
+            </nav>
 
-    <!-- Suppliers Row -->
-    <div class="container-box"
-        style="background: linear-gradient(135deg, #1f2937, #374151); grid-column: 1 / 3; grid-row: 3;">
-        <div class="container-icon">🏪</div>
-        <div class="container-label">SUPPLIERS</div>
-        <div class="container-info">Water • Chemicals • Seeds</div>
-    </div>
-
-    <!-- Clients Row -->
-    <div class="container-box"
-        style="background: linear-gradient(135deg, #312e81, #4338ca); grid-column: 3 / 5; grid-row: 3;">
-        <div class="container-icon">👥</div>
-        <div class="container-label">CLIENTS</div>
-        <div class="container-info">Buyers for your crops</div>
-    </div>
-    </div>
-    </div>
-
-    <!-- Side Panel -->
-    <div class="side-panel">
-        <!-- Agents Panel -->
-        <div class="panel-section">
-            <h3>🤖 Mobile Agents</h3>
-            <div id="agentsList">
-                <div class="agent-card">
-                    <div class="agent-avatar">🤖</div>
-                    <div class="agent-details">
-                        <div class="agent-name">Drone-1</div>
-                        <div class="agent-status">📍 Base • Idle</div>
-                    </div>
-                    <div class="agent-battery">
-                        <div class="battery-level" style="width: 85%"></div>
-                    </div>
-                </div>
-                <div class="agent-card">
-                    <div class="agent-avatar">🤖</div>
-                    <div class="agent-details">
-                        <div class="agent-name">Drone-2</div>
-                        <div class="agent-status">📍 Base • Idle</div>
-                    </div>
-                    <div class="agent-battery">
-                        <div class="battery-level" style="width: 100%"></div>
-                    </div>
-                </div>
-                <div class="agent-card">
-                    <div class="agent-avatar">🌾</div>
-                    <div class="agent-details">
-                        <div class="agent-name">Harvester</div>
-                        <div class="agent-status">📍 Base • Idle</div>
-                    </div>
-                    <div class="agent-battery">
-                        <div class="battery-level" style="width: 70%"></div>
-                    </div>
-                </div>
-                <div class="agent-card">
-                    <div class="agent-avatar">💧</div>
-                    <div class="agent-details">
-                        <div class="agent-name">Irrigator</div>
-                        <div class="agent-status">📍 Base • Idle</div>
-                    </div>
-                    <div class="agent-battery">
-                        <div class="battery-level" style="width: 90%"></div>
-                    </div>
-                </div>
-                <div class="agent-card">
-                    <div class="agent-avatar">💉</div>
-                    <div class="agent-details">
-                        <div class="agent-name">Sprayer</div>
-                        <div class="agent-status">📍 Base • Idle</div>
-                    </div>
-                    <div class="agent-battery">
-                        <div class="battery-level" style="width: 95%"></div>
-                    </div>
+            <div class="status-panel mt-auto">
+                <div class="connection-status">
+                    <span id="statusDot" class="status-dot disconnected"></span>
+                    <span id="statusText">Disconnected</span>
                 </div>
             </div>
-        </div>
+        </aside>
 
-        <!-- Inventory Panel -->
-        <div class="panel-section">
-            <h3>📦 Inventory</h3>
-            <div id="inventoryList">
-                <div class="inventory-item">
-                    <span><span class="inventory-icon">💧</span> Water</span>
-                    <span class="inventory-count">20</span>
-                </div>
-                <div class="inventory-item">
-                    <span><span class="inventory-icon">🧪</span> Fungicide</span>
-                    <span class="inventory-count">5</span>
-                </div>
-                <div class="inventory-item">
-                    <span><span class="inventory-icon">💊</span> Antibiotic</span>
-                    <span class="inventory-count">5</span>
-                </div>
-                <div class="inventory-item">
-                    <span><span class="inventory-icon">🌱</span> Seeds</span>
-                    <span class="inventory-count">10</span>
-                </div>
-                <div class="inventory-item">
-                    <span><span class="inventory-icon">🌾</span> Stored Crops</span>
-                    <span class="inventory-count">0</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Activity Log -->
-        <div class="panel-section" style="flex: 1;">
-            <h3>📜 Activity Log</h3>
-            <div class="log-container" id="activityLog">
-                <div class="log-entry"><span class="log-time">[06:00]</span> System started</div>
-                <div class="log-entry"><span class="log-time">[06:00]</span> All agents initialized</div>
-                <div class="log-entry"><span class="log-time">[06:00]</span> Fields loaded</div>
-            </div>
-        </div>
-    </div>
-    </div>
-
-    <script>
-        // ============================================================
-        // SmartFarm V2 - Frontend JavaScript
-        // ============================================================
-
-        let ws = null;
-        let connected = false;
-
-        // Initialize WebSocket connection
-        function initWebSocket() {
-            ws = new WebSocket('ws://localhost:8080/ws');
-
-            ws.onopen = () => {
-                connected = true;
-                document.getElementById('connectionOverlay').classList.add('hidden');
-                document.getElementById('connectionStatus').classList.remove('disconnected');
-                document.getElementById('connectionStatus').classList.add('connected');
-                document.getElementById('connectionText').textContent = 'Connected';
-                addLog('Connected to SmartFarm V2 server');
-            };
-
-            ws.onclose = () => {
-                connected = false;
-                document.getElementById('connectionStatus').classList.remove('connected');
-                document.getElementById('connectionStatus').classList.add('disconnected');
-                document.getElementById('connectionText').textContent = 'Disconnected';
-                addLog('Disconnected from server');
-
-                // Try to reconnect after 3 seconds
-                setTimeout(initWebSocket, 3000);
-            };
-
-            ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
-                addLog('Connection error');
-            };
-
-            ws.onmessage = (event) => {
-                try {
-                    const msg = JSON.parse(event.data);
-                    handleMessage(msg);
-                } catch (e) {
-                    console.error('Failed to parse message:', e);
-                }
-            };
-        }
-
-        // Handle incoming messages
-        function handleMessage(msg) {
-            console.log('Received:', msg);
-
-            switch (msg.type) {
-                case 'CONNECTED':
-                    addLog(msg.message);
-                    break;
-
-                case 'FIELD_UPDATE':
-                    updateField(msg.data);
-                    break;
-
-                case 'AGENT_UPDATE':
-                    updateAgent(msg.data);
-                    break;
-
-                case 'AGENT_MOVE':
-                    animateAgentMove(msg.data);
-                    break;
-
-                case 'INVENTORY_UPDATE':
-                    updateInventory(msg.data);
-                    break;
-
-                case 'TIME_UPDATE':
-                    updateTime(msg.data);
-                    break;
-
-                case 'WEATHER_UPDATE':
-                    updateWeather(msg.data);
-                    break;
-
-                case 'LOG':
-                    addLog(msg.data.message);
-                    break;
-
-                default:
-                    console.log('Unknown message type:', msg.type);
-            }
-        }
-
-        // Update field display - ALL DATA FROM BACKEND
-        function updateField(data) {
-            const field = document.getElementById('field-' + data.id);
-            if (!field) return;
-
-            // Update stat bars and values
-            const moistureBar = document.getElementById('moisture-bar-' + data.id);
-            const healthBar = document.getElementById('health-bar-' + data.id);
-            const growthBar = document.getElementById('growth-bar-' + data.id);
-            const scanBar = document.getElementById('scan-bar-' + data.id);
-            const moistureVal = document.getElementById('moisture-val-' + data.id);
-            const healthVal = document.getElementById('health-val-' + data.id);
-            const growthVal = document.getElementById('growth-val-' + data.id);
-            const scanVal = document.getElementById('scan-val-' + data.id);
-
-            // Update moisture bar
-            if (moistureBar) {
-                moistureBar.style.width = data.moisture + '%';
-                moistureBar.classList.remove('low', 'critical');
-                if (data.moisture <= 10) moistureBar.classList.add('critical');
-                else if (data.moisture <= 30) moistureBar.classList.add('low');
-            }
-            // Update health bar
-            if (healthBar) {
-                healthBar.style.width = data.health + '%';
-                healthBar.classList.remove('low', 'critical');
-                if (data.health <= 30) healthBar.classList.add('critical');
-                else if (data.health <= 60) healthBar.classList.add('low');
-            }
-            // Update growth bar
-            if (growthBar) {
-                growthBar.style.width = data.growth + '%';
-                growthBar.classList.remove('ready');
-                if (data.growth >= 100) growthBar.classList.add('ready');
-            }
-            // Update scan level bar
-            if (scanBar && data.scanLevel !== undefined) {
-                scanBar.style.width = data.scanLevel + '%';
-                scanBar.classList.remove('low');
-                if (data.scanLevel <= 30) scanBar.classList.add('low');
-            }
-
-            // Update numeric values
-            if (moistureVal) moistureVal.textContent = data.moisture + '%';
-            if (healthVal) healthVal.textContent = data.health + '%';
-            if (growthVal) growthVal.textContent = data.growth + '%';
-            if (scanVal && data.scanLevel !== undefined) scanVal.textContent = data.scanLevel + '%';
-
-            // Update crop icon and info
-            const icon = document.getElementById('icon-' + data.id);
-            const crop = document.getElementById('crop-' + data.id);
-            if (icon && data.cropIcon) icon.textContent = data.cropIcon;
-            if (crop && data.crop) crop.textContent = data.crop;
-
-            // Handle disease indicator
-            const diseaseIndicator = document.getElementById('disease-' + data.id);
-            if (diseaseIndicator) {
-                if (data.disease) {
-                    diseaseIndicator.classList.add('active');
-                    diseaseIndicator.textContent = '🦠 ' + data.disease;
-                    field.classList.add('sick');
-                    field.classList.remove('ready');
-                } else {
-                    diseaseIndicator.classList.remove('active');
-                    field.classList.remove('sick');
-                }
-            }
-
-            // Handle empty field (not planted)
-            const emptyOverlay = document.getElementById('empty-' + data.id);
-            if (emptyOverlay) {
-                if (data.planted === false) {
-                    emptyOverlay.classList.add('active');
-                    field.classList.add('empty');
-                } else {
-                    emptyOverlay.classList.remove('active');
-                    field.classList.remove('empty');
-                }
-            }
-
-            // Handle ready for harvest
-            if (data.growth >= 100 && !data.disease && data.planted !== false) {
-                field.classList.add('ready');
-            } else {
-                field.classList.remove('ready');
-            }
-        }
-
-        // Update agent display - ALL DATA FROM BACKEND
-        function updateAgent(data) {
-            // Find existing agent card or create if not exists
-            const agentsList = document.getElementById('agentsList');
-            let card = document.querySelector(`[data-agent-id="${data.id}"]`);
-
-            if (!card) {
-                // Create new agent card
-                card = document.createElement('div');
-                card.className = 'agent-card';
-                card.setAttribute('data-agent-id', data.id);
-                card.innerHTML = `
-                    <div class="agent-avatar">${data.type === 'drone' ? '🤖' : '🚜'}</div>
-                    <div class="agent-details">
-                        <div class="agent-name">${data.id}</div>
-                        <div class="agent-status"></div>
+        <!-- Main Content -->
+        <main class="main-content">
+            
+            <!-- Top Header -->
+            <header class="top-header">
+                <h2 class="header-title">Live Control Panel</h2>
+                <div class="header-stats">
+                    <div class="stat-item" id="timeDisplay">
+                        <span class="stat-label">Time:</span> 
+                        <span id="gameTime">06:00</span>
                     </div>
-                    <div class="agent-battery">
-                        <div class="battery-level"></div>
+                    <div class="stat-item" id="weatherDisplay">
+                        <span class="stat-label">Weather:</span> ☀️ Sunny
                     </div>
-                `;
-                agentsList.appendChild(card);
-            }
+                    <div class="stat-item">
+                        <span class="stat-label">Funds:</span> 
+                        <span id="moneyDisplay">$0</span>
+                    </div>
+                </div>
+            </header>
 
-            // Update status
-            const statusEl = card.querySelector('.agent-status');
-            if (statusEl) {
-                const locationName = data.location.replace('-Container', '');
-                statusEl.textContent = `📍 ${locationName} • ${data.status}`;
-            }
+            <!-- Content Area -->
+            <div class="content-wrapper">
+                
+                <!-- TAB: OVERVIEW -->
+                <div id="overview" class="tab-pane active">
+                    <div class="dashboard-grid" id="farmGrid">
+                        
+                        <!-- Base -->
+                        
 
-            // Update battery
-            const batteryEl = card.querySelector('.battery-level');
-            if (batteryEl) {
-                batteryEl.style.width = data.battery + '%';
-                batteryEl.classList.remove('low', 'critical');
-                if (data.battery <= 20) batteryEl.classList.add('critical');
-                else if (data.battery <= 50) batteryEl.classList.add('low');
-            }
+                        <!-- Warehouse -->
+                        <div class="card card-warehouse">
+                            <div class="card-header">
+                                <span class="card-title">📦 Warehouse</span>
+                            </div>
+                            <div id="warehouseStats" style="font-size: 0.85rem; display:flex; flex-direction:column; gap:0.3rem;">
+                                <!-- Dynamic Content -->
+                                Loading inventory...
+                            </div>
+                        </div>
 
-            // Track worker at field
-            updateAgentLocation(data.id, data.location);
-        }
+                        <!-- Market -->
+                        <div class="card card-market">
+                            <div class="card-header">
+                                <span class="card-title">💰 Global Market</span>
+                            </div>
+                            <div style="font-size: 0.85rem;">
+                                <div style="display:flex; justify-content:space-between;">
+                                    <span>Water:</span> <span style="color:var(--accent-green)">$5</span>
+                                </div>
+                                <div style="display:flex; justify-content:space-between;">
+                                    <span>Fungicide:</span> <span style="color:var(--accent-green)">$20</span>
+                                </div>
+                            </div>
+                        </div>
 
-        // Animate agent movement between containers
-        function animateAgentMove(data) {
-            addLog(`🚀 ${data.agent} moving: ${data.from} → ${data.to}`);
+                        <!-- Clients -->
+                        <div class="card card-clients">
+                            <div class="card-header">
+                                <span class="card-title">👥 Clients</span>
+                            </div>
+                            <div style="font-size: 0.85rem;">
+                                <p>Crop Buyers Active</p>
+                            </div>
+                        </div>
 
-            // Visual indicator: flash the destination container
-            const toContainerId = data.to.toLowerCase().replace('-', '');
-            const destContainer = document.getElementById(toContainerId) ||
-                document.getElementById(data.to.toLowerCase());
+                        <!-- Field 1 -->
+                        <div class="card card-field" id="field-1">
+                            <div class="card-header">
+                                <span class="card-title">🌱 Field 1</span>
+                                <div id="status-badges-1" style="display:flex; gap:0.5rem"></div>
+                            </div>
+                            
+                            <!-- Empty State -->
+                            <div id="empty-field-1" class="action-btn-lg" onclick="plantField(1)" style="display:none">
+                                <span class="action-icon">➕</span>
+                                <span>Plant Crop ($500)</span>
+                            </div>
 
-            if (destContainer) {
-                destContainer.style.transition = 'box-shadow 0.3s ease';
-                destContainer.style.boxShadow = '0 0 30px rgba(59, 130, 246, 0.8)';
-                setTimeout(() => {
-                    destContainer.style.boxShadow = '';
-                }, 1500);
-            }
-        }
+                            <!-- Active State -->
+                            <div id="active-field-1" class="field-content">
+                                <div class="field-header">
+                                    <div class="field-info">
+                                        <h3><span id="crop-icon-1">🌱</span> <span id="crop-name-1">Corn</span></h3>
+                                    </div>
+                                    <div class="workers-container" id="workers-1"></div>
+                                </div>
 
-        // Update inventory display
-        function updateInventory(data) {
-            // Update warehouse info display
-            const warehouseInfo = document.getElementById('warehouse-info');
-            if (warehouseInfo) {
-                warehouseInfo.textContent = `💧${data.water} 🧪${data.fungicide} 🌱${data.seeds} 📦${data.crops}`;
-            }
+                                <div class="farm-stats">
+                                    <div class="stat-group">
+                                        <div class="stat-bar-header">
+                                            <span>💧 Moisture</span>
+                                            <span id="val-moisture-1">0%</span>
+                                        </div>
+                                        <div class="progress-track">
+                                            <div id="bar-moisture-1" class="progress-fill fill-moisture" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="stat-group">
+                                        <div class="stat-bar-header">
+                                            <span>❤️ Health</span>
+                                            <span id="val-health-1">100%</span>
+                                        </div>
+                                        <div class="progress-track">
+                                            <div id="bar-health-1" class="progress-fill fill-health" style="width: 100%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="stat-group">
+                                        <div class="stat-bar-header">
+                                            <span>📈 Growth</span>
+                                            <span id="val-growth-1">0%</span>
+                                        </div>
+                                        <div class="progress-track">
+                                            <div id="bar-growth-1" class="progress-fill fill-growth" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="stat-group">
+                                        <div class="stat-bar-header">
+                                            <span>🔍 Scan Level</span>
+                                            <span id="val-scan-1">100%</span>
+                                        </div>
+                                        <div class="progress-track">
+                                            <div id="bar-scan-1" class="progress-fill fill-scan" style="width: 100%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-            // Update money in header
-            const moneyEl = document.getElementById('money');
-            if (moneyEl && data.money !== undefined) {
-                moneyEl.textContent = `$${data.money.toLocaleString()}`;
-            }
+                        <!-- Field 2 -->
+                        <div class="card card-field" id="field-2">
+                            <div class="card-header">
+                                <span class="card-title">🌾 Field 2</span>
+                                <div id="status-badges-2" style="display:flex; gap:0.5rem"></div>
+                            </div>
 
-            // Add log entry to warehouse (only on significant changes)
-            if (data.water !== undefined) {
-                addContainerLog('warehouse', `💧${data.water} 🧪${data.fungicide} 📦${data.crops} 💰$${data.money || 0}`);
-            }
-        }
+                            <!-- Empty State -->
+                            <div id="empty-field-2" class="action-btn-lg" onclick="plantField(2)" style="display:none">
+                                <span class="action-icon">➕</span>
+                                <span>Plant Crop ($500)</span>
+                            </div>
 
-        // Add log entry to a specific container
-        function addContainerLog(containerId, message, type = '') {
-            const logEl = document.getElementById('log-' + containerId);
-            if (!logEl) return;
+                            <!-- Active State -->
+                            <div id="active-field-2" class="field-content">
+                                <div class="field-header">
+                                    <div class="field-info">
+                                        <h3><span id="crop-icon-2">🌾</span> <span id="crop-name-2">Wheat</span></h3>
+                                    </div>
+                                    <div class="workers-container" id="workers-2"></div>
+                                </div>
+                                <div class="farm-stats">
+                                    <div class="stat-group">
+                                        <div class="stat-bar-header">
+                                            <span>💧 Moisture</span>
+                                            <span id="val-moisture-2">0%</span>
+                                        </div>
+                                        <div class="progress-track">
+                                            <div id="bar-moisture-2" class="progress-fill fill-moisture" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="stat-group">
+                                        <div class="stat-bar-header">
+                                            <span>❤️ Health</span>
+                                            <span id="val-health-2">100%</span>
+                                        </div>
+                                        <div class="progress-track">
+                                            <div id="bar-health-2" class="progress-fill fill-health" style="width: 100%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="stat-group">
+                                        <div class="stat-bar-header">
+                                            <span>📈 Growth</span>
+                                            <span id="val-growth-2">0%</span>
+                                        </div>
+                                        <div class="progress-track">
+                                            <div id="bar-growth-2" class="progress-fill fill-growth" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="stat-group">
+                                        <div class="stat-bar-header">
+                                            <span>🔍 Scan Level</span>
+                                            <span id="val-scan-2">100%</span>
+                                        </div>
+                                        <div class="progress-track">
+                                            <div id="bar-scan-2" class="progress-fill fill-scan" style="width: 100%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
 
-            const entry = document.createElement('div');
-            entry.className = 'log-entry' + (type ? ' ' + type : '');
-            entry.textContent = message;
-            entry.title = message; // Show full text on hover
+                <!-- TAB: MARKET -->
+                <div id="market" class="tab-pane">
+                    <header class="tab-header">
+                        
+                        
+                    </header>
+                    
+                    <div class="market-categories">
+                        <button class="cat-btn active" onclick="filterMarket('ALL')">All</button>
+                        <button class="cat-btn" onclick="filterMarket('LAND')">Real Estate</button>
+                        <button class="cat-btn" onclick="filterMarket('EQUIPMENT')">Equipment</button>
+                        <button class="cat-btn" onclick="filterMarket('RESOURCE')">Resources</button>
+                    </div>
 
-            // Insert at top
-            logEl.insertBefore(entry, logEl.firstChild);
+                    <div id="marketGrid" class="market-grid-v2">
+                        <!-- Dynamic Injection -->
+                    </div>
+                </div>
 
-            // Keep only last 5 entries
-            while (logEl.children.length > 5) {
-                logEl.removeChild(logEl.lastChild);
-            }
-        }
+                <!-- Purchase Confirmation Modal -->
+                <div id="purchaseModal" class="modal-overlay">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <span class="modal-title">Confirm Purchase</span>
+                            <button class="modal-close" onclick="closeModal('purchaseModal')">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="purchase-preview">
+                                <div id="modalItemIcon" class="large-icon">📦</div>
+                                <div class="purchase-details">
+                                    <h3 id="modalItemName">Item Name</h3>
+                                    <p id="modalItemDesc">Description goes here</p>
+                                    <div class="purchase-price">
+                                        <span>Cost:</span>
+                                        <span id="modalItemPrice" class="price-tag">$0</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="balance-check">
+                                <div class="row">
+                                    <span>Current Balance:</span>
+                                    <span id="modalCurrentBalance">$0</span>
+                                </div>
+                                <div class="row new-balance">
+                                    <span>After Purchase:</span>
+                                    <span id="modalNewBalance">$0</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeModal('purchaseModal')">Cancel</button>
+                            <button id="confirmPurchaseBtn" class="btn btn-primary" onclick="executePurchase()">Confirm Payment</button>
+                        </div>
+                    </div>
+                </div>
 
-        // Parse LOG messages and route to container logs
-        function parseAndRouteLog(message) {
-            // Route to specific field
-            const fieldMatch = message.match(/Field[- ]?(\d+)/i);
-            if (fieldMatch) {
-                const fieldId = fieldMatch[1];
-                let type = '';
-                if (message.includes('water') || message.includes('Water')) type = 'water';
-                else if (message.includes('disease') || message.includes('SICK') || message.includes('Symptom')) type = 'disease';
-                else if (message.includes('harvest') || message.includes('Harvest')) type = 'harvest';
-                else if (message.includes('scan') || message.includes('Scan')) type = 'scan';
+                <!-- TAB: AGENTS -->
+                <div id="agents" class="tab-pane">
+                    <h3 style="margin-bottom:1.5rem">Agent Status</h3>
+                    <div id="agentsGrid" class="agents-grid">
+                        <!-- Dynamic Agents will be injected here -->
+                    </div>
+                </div>
 
-                addContainerLog('field-' + fieldId, message, type);
-            }
+                <!-- TAB: LOGS -->
+                <div id="logs" class="tab-pane">
+                    <h3 style="margin-bottom:1.5rem">System Events</h3>
+                    <div id="systemLogs" class="log-panel">
+                        <!-- Logs injected here -->
+                        <div class="log-entry"><span class="log-time">[System]</span> Waiting for logs...</div>
+                    </div>
+                </div>
 
-            // Route to base for agent charging/moving
-            if (message.includes('Drone') || message.includes('Irrigator') ||
-                message.includes('Harvester') || message.includes('Sprayer')) {
-                if (message.includes('charging') || message.includes('departing') ||
-                    message.includes('returned') || message.includes('Base')) {
-                    addContainerLog('base', message);
-                }
-            }
+            </div>
+        </main>
+    </div>
 
-            // Route to warehouse
-            if (message.includes('Inventory') || message.includes('water') ||
-                message.includes('fungicide') || message.includes('crops')) {
-                addContainerLog('warehouse', message);
-            }
-        }
+    <!-- Agent Status Monitor -->
+    <div id="agent-monitor" class="agent-monitor"></div>
 
-        // Track which workers are at which fields
-        const workersAtFields = {};
+    <!-- Mini Logs Overlay -->
+    <div id="miniLogs" class="mini-logs"></div>
 
-        // Update game time with day/night cycle
-        function updateTime(data) {
-            document.getElementById('gameTime').textContent = data.display;
+    <!-- Main Logic -->
+    <script src="main.js"></script>
 
-            // Day/night cycle: night is 18:00-06:00
-            const hour = data.hour;
-            const isNight = hour >= 18 || hour < 6;
-            const nightOverlay = document.getElementById('nightOverlay');
-
-            if (nightOverlay) {
-                if (isNight) {
-                    // Calculate night intensity (darker at midnight)
-                    let intensity = 0;
-                    if (hour >= 18) intensity = (hour - 18) / 6 * 0.5;
-                    else intensity = (6 - hour) / 6 * 0.5;
-                    nightOverlay.style.opacity = intensity;
-                } else {
-                    nightOverlay.style.opacity = 0;
-                }
-            }
-        }
-
-        // Update weather display
-        function updateWeather(data) {
-            document.getElementById('weather').textContent = data.icon + ' ' + data.name;
-        }
-
-        // Update agent with worker icon at field tracking
-        function updateAgentLocation(agentId, location) {
-            // Remove agent from old location
-            for (let fieldId in workersAtFields) {
-                workersAtFields[fieldId] = workersAtFields[fieldId].filter(a => a !== agentId);
-            }
-
-            // Add to new location if it's a field
-            if (location.startsWith('Field-Container-')) {
-                const fieldNum = location.replace('Field-Container-', '');
-                if (!workersAtFields[fieldNum]) workersAtFields[fieldNum] = [];
-                if (!workersAtFields[fieldNum].includes(agentId)) {
-                    workersAtFields[fieldNum].push(agentId);
-                }
-            }
-
-            // Update worker icons on all fields
-            for (let i = 1; i <= 2; i++) {
-                const workerContainer = document.getElementById('workers-' + i);
-                if (workerContainer) {
-                    const workers = workersAtFields[i] || [];
-                    if (workers.length > 0) {
-                        workerContainer.innerHTML = workers.map(w => {
-                            let icon = '🤖';
-                            if (w.includes('Irrigator')) icon = '💧';
-                            else if (w.includes('Harvester')) icon = '🌾';
-                            else if (w.includes('Sprayer')) icon = '💉';
-                            return `<span class="worker-icon" title="${w}">${icon}</span>`;
-                        }).join('');
-                    } else {
-                        workerContainer.innerHTML = '';
-                    }
-                }
-            }
-        }
-
-        // Plant a crop in an empty field
-        function plantField(fieldId) {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({
-                    type: 'COMMAND',
-                    command: 'PLANT',
-                    fieldId: fieldId,
-                    crop: 'CORN'  // Default crop
-                }));
-                addLog(`🌱 Planting crop in Field ${fieldId}...`);
-            }
-        }
-
-        // Add log entry
-        function addLog(message) {
-            const log = document.getElementById('activityLog');
-            const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-            const entry = document.createElement('div');
-            entry.className = 'log-entry';
-            entry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`;
-            log.insertBefore(entry, log.firstChild);
-
-            // Keep only last 50 entries
-            while (log.children.length > 50) {
-                log.removeChild(log.lastChild);
-            }
-
-            // Also route to container-specific logs
-            parseAndRouteLog(message);
-        }
-
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            initWebSocket();
-
-            // Add field button click handler
-            document.getElementById('addFieldBtn').addEventListener('click', () => {
-                addLog('Add field requested (not implemented yet)');
-            });
-        });
-    </script>
 </body>
-
 </html>

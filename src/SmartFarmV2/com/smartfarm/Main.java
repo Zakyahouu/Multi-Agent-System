@@ -20,6 +20,39 @@ public class Main {
     private static AgentContainer baseContainer;
     private static AgentContainer[] fieldContainers;
 
+    // ==================== NEW: Dynamic Helper ====================
+    public static void createFieldAgent(int id, com.smartfarm.models.CropType type) {
+        try {
+            Runtime runtime = Runtime.instance();
+            
+            // Create Container
+            Profile fieldProfile = new ProfileImpl();
+            fieldProfile.setParameter(Profile.MAIN_HOST, "localhost");
+            fieldProfile.setParameter(Profile.CONTAINER_NAME, "Field-Container-" + id);
+            AgentContainer container = runtime.createAgentContainer(fieldProfile);
+            
+            // Expand array (simple resize for demo)
+            AgentContainer[] newArray = new AgentContainer[fieldContainers.length + 1];
+            System.arraycopy(fieldContainers, 0, newArray, 0, fieldContainers.length);
+            newArray[fieldContainers.length] = container;
+            fieldContainers = newArray;
+
+            // Create Agent
+            Object[] fieldArgs = new Object[] { id, type.name(), webServer };
+            AgentController fieldAgent = container.createNewAgent(
+                    "Field-" + id,
+                    "com.smartfarm.agents.FieldAgent",
+                    fieldArgs);
+            fieldAgent.start();
+            System.out.println("[Main] Dynamic Field-" + id + " deployed successfully!");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static AgentController farmManager;
+
     public static void main(String[] args) {
         System.out.println("============================================================");
         System.out.println("           SMARTFARM V2 - MULTI-AGENT SIMULATION");
@@ -57,6 +90,16 @@ public class Main {
             baseProfile.setParameter(Profile.CONTAINER_NAME, "Base-Container");
             baseContainer = runtime.createAgentContainer(baseProfile);
             System.out.println("[Main] Base-Container created.");
+            
+            // NEW: Market Agent
+            System.out.println("[Main] Creating Market Agent...");
+            AgentController market = mainContainer.createNewAgent("Market", "com.smartfarm.agents.MarketAgent", new Object[]{webServer});
+            market.start();
+            
+            // NEW: Farm Manager (with O2A enabled)
+            System.out.println("[Main] Creating Farm Manager...");
+            farmManager = mainContainer.createNewAgent("FarmManager", "com.smartfarm.agents.FarmManagerAgent", new Object[]{webServer, 2});
+            farmManager.start();
 
             // Step 5: Create Field-Containers
             System.out.println("[Main] Step 5: Creating Field-Containers...");
@@ -188,6 +231,7 @@ public class Main {
             }
             System.out.println();
             System.out.println("  Market Agents:");
+            System.out.println("    Market              (Economy Manager)");
             System.out.println("    WaterSupplier       (sells water)");
             System.out.println("    FungicideSupplier   (sells fungicide)");
             System.out.println("    CropBuyer           (buys crops)");
@@ -220,4 +264,9 @@ public class Main {
     public static AgentContainer getBaseContainer() {
         return baseContainer;
     }
+
+    public static AgentController getFarmManager() {
+        return farmManager;
+    }
 }
+
